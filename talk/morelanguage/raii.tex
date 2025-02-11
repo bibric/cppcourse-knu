@@ -1,0 +1,469 @@
+\subsection[RAII]{RAII and smart pointers}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Pointers: why are they error prone?}
+  \begin{exampleblock}{They need initialization
+      \hfill \onslide<2->{\textcolor{orange}{\bf Seg Fault}}}
+    \begin{cppcode*}{xleftmargin=20pt}
+      char *s;
+      try {
+        foo(); // may throw
+        s = new char[100];
+        read_line(s);
+      } catch (...) { ... }
+      process_line(s);
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \pause
+  \vspace{-2cm}
+  \begin{exampleblock}{They need to be released
+      \hfill \onslide<4->{\textcolor{orange}{\bf Memory leak}}}
+    \begin{cppcode*}{xleftmargin=20pt}
+      char *s = new char[100];
+      read_line(s);
+      if (s[0] == '#') return;
+      process_line(s);
+      delete[] s;
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \pause
+  \vspace{-2cm}
+  \begin{exampleblock}{They need clear ownership
+      \hfill \onslide<6->{\textcolor{orange}{\bf Who should release ?}}}
+    \begin{cppcode*}{xleftmargin=20pt}
+      char *s = new char[100];
+      read_line(s);
+      vec.push_back(s);
+      set.add(s);
+      std::thread t1{func1, vec};
+      std::thread t2{func2, set};
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{This problem exists for any resource}
+  \begin{exampleblock}{For example with a file}
+    \begin{cppcode*}{}
+      std::FILE *handle = std::fopen(path, "w+");
+      if (nullptr == handle) { throw ... }
+      std::vector v(100, 42);
+      write(handle, v);
+      if (std::fputs("end", handle) == EOF) {
+        return;
+      }
+      std::fclose(handle);
+    \end{cppcode*}
+  \end{exampleblock}
+  \begin{block}{}
+    Which problems do you spot in the above snippet?
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitlecpp[98]{Resource Acquisition Is Initialization (RAII)}
+  \begin{block}{Practically}
+    Use variable construction/destruction and scope semantics:
+    \begin{itemize}
+    \item wrap the resource inside a class
+    \item acquire resource in constructor
+    \item release resource in destructor
+    \item create an instance on the stack
+    \begin{itemize}
+      \item automatically destructed when leaving the scope
+      \item including in case of exception
+    \end{itemize}
+    \item use move semantics to pass the resource around
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{RAII in practice}
+  \begin{exampleblock}{An RAII File class}
+    \small
+    \begin{cppcode*}{gobble=2}
+      class File {
+      public:
+        // constructor: acquire resource
+        File(const char* filename)
+          : m_handle(std::fopen(filename, "w+")) {
+          // abort constructor on error
+          if (m_handle == nullptr) { throw ... }
+        }
+        // destructor: release resource
+        ~File() { std::fclose(m_handle); }
+        void write (const char* str) {
+          ...
+        }
+      private:
+        std::FILE* m_handle; // wrapped resource
+      };
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{RAII usage}
+  \begin{exampleblock}{Usage of File class}
+    \begin{cppcode*}{}
+      void log_function() {
+        // file opening, aka resource acquisition
+        File logfile("logfile.txt");
+
+        // file usage
+        logfile.write("hello logfile!"); // may throw
+
+        // file is automatically closed by the call to
+        // its destructor, even in case of exception!
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+  \begin{goodpractice}[Use \texttt{std::fstream}]{Use \texttt{std::fstream} for file handling}
+     The standard library provides \cppinline{std::fstream} to handle files, use it!
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{\texttt{std::unique\_ptr}}
+  \begin{block}{A RAII pointer}
+    \begin{itemize}
+    \item wraps and behaves like a regular pointer
+    \item get underlying pointer using \cppinline{get()}
+    \item when destroyed, deletes the object pointed to
+    \item has move-only semantic
+      \begin{itemize}
+      \item the pointer has unique ownership
+      \item copying will result in a compile error
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{}
+    \begin{cppcode*}{}
+      #include <memory>
+      void f(std::unique_ptr<Foo> ptr) {
+        ptr->bar();
+      } // deallocation when f exits
+
+      std::unique_ptr<Foo> p{ new Foo{} }; // allocation
+      f(std::move(p)); // transfer ownership
+      assert(p.get() == nullptr);
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Quiz}
+  \begin{exampleblock}{What do you expect?}
+    \begin{cppcode*}{}
+      void f(std::unique_ptr<Foo> ptr);
+      std::unique_ptr<Foo> uptr(new Foo{});
+      f(uptr); // transfer of ownership
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \begin{alertblock}{Compilation Error - \godboltLink{https://godbolt.org/z/jfqKjocnh}{\texttt{unique\_ptr} copy}}
+    \begin{minted}{text}
+test.cpp:15:5: error: call to deleted constructor
+of 'std::unique_ptr<Foo>'
+  f(uptr);
+    ^~~~
+/usr/include/c++/4.9/bits/unique_ptr.h:356:7: note:
+ 'unique_ptr' has been explicitly marked deleted here
+ unique_ptr(const unique_ptr&) = delete;
+ ^
+    \end{minted}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[14]{\texttt{std::make\_unique}}
+  \begin{block}{\texttt{std::make\_unique}}
+    \begin{itemize}
+      \item allocates and constructs an object with arguments\\
+            and wraps it with \cppinline{std::unique_ptr} in one step
+      \item no \cppinline{new} or \cppinline{delete} calls anymore!
+      \item no memory leaks if used consistently
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{\texttt{std::make\_unique} usage}
+    \begin{cppcode*}{}
+      {
+        // calls new File("logfile.txt") internally
+        auto f = std::make_unique<File>("logfile.txt");
+        f->write("hello logfile!");
+      } // deallocation at end of scope
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{advanced}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Arrays and \texttt{unique\_ptr}}
+  \begin{block}{Dynamic arrays}
+    \begin{itemize}
+      \item \cppinline{unique_ptr} can wrap arrays
+      \item Use \cppinline{T[]} as template parameter
+      \item This will enable the subscript operator
+      \item The default constructor is called for each element
+      \item If size known at compile time, prefer \cppinline{std::array}
+      \item If size might change, prefer \cppinline{std::vector}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{}
+      auto b = std::make_unique<Foo[]>(10);
+      b[3] = ...;
+      b[4].someFunction();
+
+      // deallocations at end of scope
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\end{advanced}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{RAII or raw pointers}
+  \begin{block}{When to use what?}
+    \begin{itemize}
+    \item Always use RAII for resources, in particular allocations
+    \begin{itemize}
+      \item You thus never have to release / deallocate yourself
+    \end{itemize}
+    \item Use raw pointers as non-owning, re-bindable observers
+    \item Remember that \cppinline{std::unique_ptr} is move only
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{A question of ownership}
+    \small
+    \begin{cppcode*}{}
+      std::unique_ptr<T> produce();
+      void observe(const T&);
+      void modifyRef(T&);
+      void modifyPtr(T*);
+      void consume(std::unique_ptr<T>);
+      std::unique_ptr<T> pt{produce()}; // Receive ownership
+      observe(*pt);                     // Keep ownership
+      modifyRef(*pt);                   // Keep ownership
+      modifyPtr(pt.get());              // Keep ownership
+      consume(std::move(pt));           // Transfer ownership
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{\texttt{std::unique\_ptr} usage summary}
+  \begin{goodpractice}{\texttt{std::unique\_ptr}}
+    \begin{itemize}
+      \item \cppinline{std::unique_ptr} is about lifetime management
+      \begin{itemize}
+        \item use it to tie the lifetime of an object to a unique RAII owner
+        \item use raw pointers/references to refer to another object\\
+              without owning it or managing its lifetime
+      \end{itemize}
+      \item use \cppinline{std::make_unique} for creation
+      \item strive for having no \cppinline{new}/\cppinline{delete} in your code
+      \item for dynamic arrays, \cppinline{std::vector} may be more useful
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{\texttt{std::shared\_ptr}}
+  \begin{block}{\mintinline{cpp}{std::shared_ptr} : a reference counting pointer}
+    \begin{itemize}
+    \item wraps a regular pointer similar to \cppinline{unique_ptr}
+    \item has move and copy semantic
+    \item uses reference counting internally
+      \begin{itemize}
+      \item "Would the last person out, please turn off the lights?"
+      \end{itemize}
+    \item reference counting is thread-safe, therefore a bit costly
+    \end{itemize}
+  \end{block}
+  \begin{block}{\texttt{std::make\_shared} : creates a \texttt{std::shared\_ptr}}
+    \begin{cppcode*}{}
+      {
+        auto sp = std::make_shared<Foo>(); // #ref = 1
+        vector.push_back(sp);              // #ref = 2
+        set.insert(sp);                    // #ref = 3
+      } // #ref 2
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{advanced}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{\texttt{weak\_ptr}}
+  \begin{block}{\texttt{weak\_ptr}: a non-owning observer}
+    \small
+    \begin{itemize}
+    \item Sometimes want to observe resources without keeping them alive
+    \begin{itemize}
+      \item \cppinline{shared_ptr}? Resource stays alive
+      \item Raw pointer? Risk of dangling pointer
+    \end{itemize}
+    \item The solution is to construct a \cppinline{weak_ptr} from a shared pointer
+    \item To access the resource, convert the weak into a \cppinline{shared_ptr}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \small
+    \begin{cppcode*}{}
+      std::shared_ptr<Cache> getSharedCache();
+      std::weak_ptr<Cache> weakPtr{ getSharedCache() };
+      // ... shared cache may be invalidated here
+      if (std::shared_ptr<Cache> cache = weakPtr.lock()) {
+        // Cache is alive, we actively extend its lifetime
+        return cache->findItem(...);
+      } else {
+        // Cache is nullptr, we need to do something
+        weakPtr = recomputeCache(...);
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\end{advanced}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Quiz: \texttt{std::shared\_ptr} in use}
+  \begin{exampleblockGB}{What is the output of this code?}{https://godbolt.org/z/vM35Y6qEW}{\texttt{shared\_ptr} quiz}
+    \small
+    \begin{cppcode*}{gobble=2}
+      auto shared = std::make_shared<int>(100);
+      auto print = [shared](){
+        std::cout << "Use: " << shared.use_count() << " "
+                  << "value: " << *shared << "\n";
+      };
+      print();
+      {
+        auto ptr{ shared };
+        (*ptr)++;
+        print();
+      }
+      print();
+    \end{cppcode*}
+  \end{exampleblockGB}
+  \pause
+  \begin{block}{}
+    \small
+    \begin{minted}[autogobble=true]{bash}
+      Use: 2 value: 100
+      Use: 3 value: 101
+      Use: 2 value: 101
+    \end{minted}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Quiz: \texttt{std::shared\_ptr} in use}
+  \begin{exampleblock}{What is the output of this code?}
+    \small
+    % escapeinside seems to break gobble, so need to un-indent manually
+    \begin{cppcode*}{escapeinside=@@}
+auto shared = std::make_shared<int>(100);
+auto print = [@\textcolor{red}{&}@shared](){
+  std::cout << "Use: " << shared.use_count() << " "
+            << "value: " << *shared << "\n";
+};
+print();
+{
+  auto ptr{ shared };
+  (*ptr)++;
+  print();
+}
+print();
+      \end{cppcode*}
+  \end{exampleblock}
+  \begin{block}{}
+    \small
+    \begin{minted}[autogobble=true]{bash}
+      Use: 1 value: 100
+      Use: 2 value: 101
+      Use: 1 value: 101
+    \end{minted}
+  \end{block}
+\end{frame}
+
+\begin{advanced}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Quiz: \texttt{shared\_ptr} and \texttt{weak\_ptr} in use}
+  \begin{exampleblockGB}{What is the output of this code?}{https://godbolt.org}{\texttt{shared/weak\_ptr}}
+    \small
+    \begin{cppcode*}{gobble=2}
+      auto shared = std::make_shared<int>(100);
+      std::weak_ptr<int> weak{ shared };
+      print(); // with print as before
+
+      auto ptr = weak.lock();
+      (*ptr)++;       print();
+
+      ptr = nullptr;  print();
+
+      function(weak); print();
+    \end{cppcode*}
+  \end{exampleblockGB}
+  \pause
+  \begin{block}{}
+    \small
+    \begin{minted}[autogobble=true]{bash}
+      Use: 1 value: 100
+      Use: 2 value: 101
+      Use: 1 value: 101
+      Use: 1 (or more) value: ???
+    \end{minted}
+  \end{block}
+\end{frame}
+
+\end{advanced}
+
+\begin{frame}[fragile]
+    \frametitlecpp[11]{Rule of zero}
+    \begin{goodpractice}[Single responsibility principle]{Single responsibility principle (SRP)}
+        Every class should have only one responsibility.
+    \end{goodpractice}
+    \begin{goodpractice}{Rule of zero}
+        \begin{itemize}
+            \item If your class has any special member functions (except ctor.)
+            \begin{itemize}
+                \item Your class probably deals with a resource, use RAII
+                \item Your class should only deal with this resource (SRP)
+                \item Apply rule of 3/5: write/default/delete all special members
+            \end{itemize}
+            \item Otherwise: do not declare any special members (rule of zero)
+            \begin{itemize}
+                \item A constructor is fine, if you need some setup
+                \item If your class holds a resource as data member:\\
+                      wrap it in a smart pointer, container, or any other RAII class
+            \end{itemize}
+        \end{itemize}
+    \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{smart pointers}
+  \begin{exercise}{Smart pointers}
+    \begin{itemize}
+    \item go to \texttt{exercises/smartPointers}
+    \item compile and run the program. It doesn't generate any output.
+    \item Run with valgrind if possible to check for leaks
+      { \scriptsize
+      \begin{minted}[gobble=6]{shell-session}
+        $ valgrind --leak-check=full --track-origins=yes ./smartPointers
+      \end{minted}
+      }
+    \item In the \emph{essentials course}, go through {\ttfamily problem1()} and {\ttfamily problem2()} and fix the leaks using smart pointers.
+    \item In the \emph{advanced course}, go through {\ttfamily problem1()} to {\ttfamily problem4()} and fix the leaks using smart pointers.
+    \item {\ttfamily problem4()} is the most difficult. Skip if not enough time.
+    \end{itemize}
+  \end{exercise}
+\end{frame}

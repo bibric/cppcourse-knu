@@ -1,0 +1,48 @@
+name: Build LaTeX slides
+on:
+  push:
+    paths:
+      - 'talk/**'
+  pull_request:
+    paths:
+      - 'talk/**'
+      - '.github/workflows/**'
+
+# Cancel running jobs on force-push
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build_latex:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [ essentials, full ]
+    steps:
+      - name: Set up Git repository
+        uses: actions/checkout@v4
+      - name: Compile essentials
+        uses: xu-cheng/latex-action@v3
+        if: matrix.version == 'essentials'
+        with:
+          root_file: C++Course.tex
+          latexmk_shell_escape: true
+          args: -pdf -interaction=nonstopmode -halt-on-error -usepretex=\def\makebasic{}
+          working_directory: talk
+          extra_system_packages: "py-pygments"
+      - name: Compile full course
+        uses: xu-cheng/latex-action@v3
+        if: matrix.version == 'full'
+        with:
+          root_file: C++Course.tex
+          latexmk_shell_escape: true
+          args: -pdf -interaction=nonstopmode -halt-on-error
+          working_directory: talk
+          extra_system_packages: "py-pygments"
+      - name: Upload PDF as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PDF_${{matrix.version}}
+          path: |
+            talk/C++Course.pdf

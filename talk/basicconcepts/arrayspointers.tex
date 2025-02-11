@@ -1,0 +1,274 @@
+\subsection[Ptr]{Arrays and Pointers}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Static arrays}
+  \begin{cppcode}
+    int ai[4] = {1,2,3,4};
+    int ai[] = {1,2,3,4};  // identical
+
+    char ac[3] = {'a','b','c'};   // char array
+    char ac[4] = "abc";           // valid C string
+    char ac[4] = {'a','b','c',0}; // same valid string
+
+    int i = ai[2];  // i = 3
+    char c = ac[8]; // at best garbage, may segfault
+    int i = ai[4];  // also garbage !
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Pointers}
+  \begin{multicols}{2}
+    % the code has to be repeated n times here. Anyone finding a better solution
+    % is welcome, but it's not a trivial task, due to the verbatim nature of minted
+  \begin{overprint}[\columnwidth]
+    \onslide<1>
+      \begin{minted}[linenos]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<2>
+      \begin{minted}[linenos,highlightlines=1]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<3>
+      \begin{minted}[linenos,highlightlines=2]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<4>
+      \begin{minted}[linenos,highlightlines=3]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<5>
+      \begin{minted}[linenos,highlightlines=5]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<6>
+      \begin{minted}[linenos,highlightlines=6]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<7>
+      \begin{minted}[linenos,highlightlines=7]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<8>
+      \begin{minted}[linenos,highlightlines=8]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+    \onslide<9>
+      \begin{minted}[linenos,highlightlines=11]{cpp}
+int i = 4;
+int *pi = &i;
+int j = *pi + 1;
+
+int ai[] = {1,2,3};
+int *pai = ai; // decay to ptr
+int *paj = pai + 1;
+int k = *paj + 1;
+
+// compile error
+int *pak = k;
+
+// seg fault !
+int *pak = (int*)k;
+int l = *pak;
+      \end{minted}
+  \end{overprint}
+  \columnbreak
+    \onslide<2->{
+      \begin{tikzpicture}
+        \memorystack[size x=3cm,word size=1,block size=4,nb blocks=11]
+        \onslide<2-> {\memorypush{i = 4}}
+        \onslide<3-> {\memorypushpointer[pi =]{1}}
+        \onslide<4-> {\memorypush{j = 5}}
+        \onslide<5-> {\memorypush{ai[0] = 1}}
+        \onslide<5-> {\memorypush{ai[1] = 2}}
+        \onslide<5-> {\memorypush{ai[2] = 3}}
+        \onslide<6-> {\memorypushpointer[pai =]{4}}
+        \onslide<7-> {\memorypushpointer[paj =]{5}}
+        \onslide<8-> {\memorypush{k = 3}}
+        \onslide<9-> {\memorypush{pak = 3}}
+        \onslide<9-> {\draw[\stackcolor!80,->] (stack10-1.west) -- +(-0.5cm,0)
+          node [anchor=east] {??};}
+      \end{tikzpicture}
+    }
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{nullptr}
+  \begin{block}{A pointer to nothing}
+    \begin{itemize}
+    \item if a pointer doesn't point to anything, set it to \cppinline{nullptr}
+    \begin{itemize}
+      \item useful to e.g.\ mark the end of a linked data structure
+      \item or absence of an optional function argument (pointer)
+    \end{itemize}
+    \item same as setting it to 0 or \cppinline{NULL} (before \cpp11)
+    \item triggers compilation error when assigned to integer
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Example code}
+    \begin{cppcode*}{}
+      int* ip = nullptr;
+      int i = NULL;      // compiles, bug?
+      int i = nullptr;   // ERROR
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Dynamic arrays using C}
+  \begin{cppcode}
+    #include <cstdlib>
+    #include <cstring>
+
+    int *bad;          // pointer to random address
+    int *ai = nullptr; // better, deterministic, testable
+
+    // allocate array of 10 ints (uninitialized)
+    ai = (int*) malloc(10*sizeof(int));
+    memset(ai, 0, 10*sizeof(int)); // and set them to 0
+
+    ai = (int*) calloc(10, sizeof(int)); // both in one go
+
+    free(ai); // release memory
+  \end{cppcode}
+  \begin{goodpractice}[C's memory management]{Don't use C's memory management}
+    Use \cppinline{std::vector} and friends or smart pointers
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Manual dynamic arrays using \cpp}
+  \begin{cppcode}
+    #include <cstdlib>
+    #include <cstring>
+
+    // allocate array of 10 ints
+    int* ai = new int[10];   // uninitialized
+    int* ai = new int[10]{}; // zero-initialized
+
+    delete[] ai; // release array memory
+
+    // allocate a single int
+    int* pi = new int;
+    int* pi = new int{};
+    delete pi; // release scalar memory
+  \end{cppcode}
+  \begin{goodpractice}[Manual memory management]{Don't use manual memory management}
+    Use \cppinline{std::vector} and friends or smart pointers
+  \end{goodpractice}
+\end{frame}

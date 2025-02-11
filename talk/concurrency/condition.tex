@@ -1,0 +1,129 @@
+\subsection[condition]{Condition Variables}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Condition variables}
+  \begin{block}{Communicating between threads}
+    \begin{itemize}
+      \item Take the case where threads are waiting for other thread(s)
+      \item \cppinline{std::condition_variable}
+      \begin{itemize}
+        \item from \cppinline{<condition_variable>} header
+      \end{itemize}
+      \item Allows for a thread to sleep (= conserve CPU time) until a given condition is satisfied
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{block}{Usage}
+    \begin{itemize}
+    \item Use RAII-style locks to protect shared data
+    \item \cppinline{wait()} will block until the condition is met
+      \begin{itemize}
+      \item you can have several waiters sharing the same mutex
+      \end{itemize}
+    \item \cppinline{notify_one()} will wake up one waiter
+    \item \cppinline{notify_all()} will wake up all waiters
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Using condition variables: notify}
+  \begin{block}{Producer side: providing data to waiting threads}
+    \begin{itemize}
+      \item Protect data with a mutex, and use condition variable to notify consumers
+      \item Optimal use: don't hold lock while notifying
+      \begin{itemize}
+        \item waiting threads would be blocked
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{}
+      std::mutex mutex;
+      std::condition_variable cond;
+      Data data;
+      std::thread producer([&](){
+        {
+          std::scoped_lock lock{mutex};
+          data = produceData(); // may take long ...
+        }
+        cond.notify_all();
+      });
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Using condition variables: wait}
+  \vspace{-1.2\baselineskip}
+  \begin{overprint}
+  \onslide<1>
+  \begin{block}{Mechanics of wait}
+    \begin{itemize}
+      \item Many threads can wait for shared data
+      \item Pass \cppinline{unique_lock} and optional predicate to \cppinline{wait()}
+      \item \cppinline{wait()} keeps threads asleep while predicate is \cppinline{false}
+      \begin{itemize}
+        \item Threads might wake up spuriously, but \cppinline{wait()} returns only when lock available \emph{and} predicate \cppinline{true}
+      \end{itemize}
+      \item \cppinline{wait()} will only lock when necessary; unlocked while sleeping
+    \end{itemize}
+  \end{block}
+  \onslide<2->
+  \begin{block}{Waiting / waking up}
+    \begin{itemize}
+      \item When \cppinline{notify_all()} is called, threads wake up
+      \item Threads try to lock mutex, and evaluate predicate
+      \item One thread succeeds to acquire mutex, starts processing data
+      \item {\color{red} Problem}: One thread holds mutex, other threads are blocked!
+    \end{itemize}
+  \end{block}
+  \end{overprint}
+
+  \begin{alertblock}{Na\"ive waiting}
+    \begin{cppcode*}{gobble=2,highlightlines=3}
+      auto processData = [&](){
+        std::unique_lock<std::mutex> lock{mutex};
+        cond.wait(lock, [&](){ return data.isReady(); });
+        process(data);
+      };
+    \end{cppcode*}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Using condition variables: correct wait}
+  \begin{block}{Waiting / waking up}
+    \begin{itemize}
+      \item {\color{green!50!black} Solution:} Put locking and waiting in a scope
+      \item Threads will one-by-one wake up, acquire lock, evaluate predicate, release lock
+    \end{itemize}
+  \end{block}
+
+  \begin{exampleblock}{Correct waiting}
+    \begin{cppcode*}{gobble=2}
+      auto processData = [&](){
+        {
+          std::unique_lock<std::mutex> lock{mutex};
+          cond.wait(lock, [&](){ return data.isReady(); });
+        }
+        process(data);
+      };
+      std::thread t1{processData}, t2{processData}, ...;
+      for (auto t : {&producer, &t1, &t2, ...}) t->join();
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Condition variables}
+  \begin{exerciseWithShortcut}{Condition variables}{Condition vars}
+    \begin{itemize}
+    \item Go to \texttt{exercises/condition\_variable}
+    \item Look at the code and run it\\
+      See that it has a race condition
+    \item Fix the race condition in the usage of the condition variable
+    \item Try to make threads process data in parallel
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}

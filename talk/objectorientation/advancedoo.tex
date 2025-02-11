@@ -1,0 +1,601 @@
+\subsection[advOO]{Advanced OO}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{\texttt{this} keyword}
+  \begin{block}{How to know an object's address?}
+    \begin{itemize}
+    \item Sometimes we need the address of the current object
+    \item Or we need to pass our address / a reference to a different entity
+      (for example to implement operators, see later)
+    \item All class methods can use the keyword \cppinline{this}
+      \begin{itemize}
+        \item It returns the address of the current object
+        \item Its type is \cppinline{T*} in the methods of a class {\ttfamily T}
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{minipage}{0.7\textwidth}
+  \begin{cppcode}
+    struct S {
+      int a,b;
+      // these two are the same:
+      int getB() { return b; }       // 5
+      int getB() { return this->b; } // 5
+      void testAddress() {
+        S* addr = this; // 0x3000
+      }
+    } s{2,5};
+  \end{cppcode}
+  \end{minipage}%
+  \hfil%
+  \begin{minipage}{0.3\textwidth}
+      \begin{tikzpicture}
+        \memorystack[size x=2cm,word size=1,block size=4,nb blocks=4]
+        \memorypush{a = 2}
+        \memorypush{b = 5}
+        \memorystruct{1}{2}{\tiny s}
+        \draw[-Triangle,thick] (\stacksizex-1*\stacksizey,-1*\stacksizey) node[left] {\footnotesize \cppinline{this} pointer} -- (\stacksizex,-0.1*\stacksizey);
+      \end{tikzpicture}
+    \end{minipage}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Polymorphism}
+  \begin{block}{the concept}
+    \begin{itemize}
+    \item objects actually have multiple types simultaneously
+    \item and can be used as any of them
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      Polygon p;
+
+      int f(Drawable & d) {...}
+      f(p);  //ok
+
+      try {
+        throw p;
+      } catch (Shape & e) {
+        // will be caught
+      }
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \begin{overprint}
+      \onslide<1>
+      \begin{tikzpicture}[node distance=1.5cm]
+        \classbox{Drawable}{}
+        \classbox[below of=Drawable]{Shape}{}
+        \classbox[below of=Shape]{Polygon}{}
+        \draw[very thick,-Triangle] (Polygon) -- (Shape);
+        \draw[very thick,-Triangle] (Shape) -- (Drawable);
+      \end{tikzpicture}
+      \onslide<2->
+      \begin{tikzpicture}
+        \memorystack[size x=3cm,word size=1,block size=4,nb blocks=9]
+        \memorypush{Drawable.a}
+        \memorypush{Drawable.b}
+        \memorypush{...}
+        \memorypush{Shape.a}
+        \memorypush{Shape.b}
+        \memorypush{...}
+        \memorypush{Polygon.nLines}
+        \onslide<2>{\memorystruct{1}{7}{\tiny Polygon}}
+        \onslide<3>{\memorystruct{1}{3}{\tiny Drawable}}
+        \onslide<4>{\memorystruct{1}{6}{\tiny Shape}}
+      \end{tikzpicture}
+    \end{overprint}
+  \end{multicols}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Inheritance privacy and polymorphism}
+  \begin{block}{Only public base classes are visible to outside code}
+    \begin{itemize}
+    \item private and protected bases are not
+    \item this may restrict usage of polymorphism
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      Polygon p;
+
+      int f(Drawable & d) {...}
+      f(p);  // Not ok anymore
+
+      try {
+        throw p;
+      } catch (Shape & e) {
+        // ok, will be caught
+      }
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \begin{tikzpicture}[node distance=1.5cm]
+      \classbox{Drawable}{}
+      \classbox[below of=Drawable]{Shape}{}
+      \classbox[below of=Shape]{Polygon}{}
+      \draw[very thick,-Triangle] (Polygon) -- (Shape) node[midway,right] {public};
+      \draw[very thick,-Triangle] (Shape) -- (Drawable) node[midway,right] {private};
+    \end{tikzpicture}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Method overriding}
+  \begin{block}{the idea}
+    \begin{itemize}
+    \item a method of the parent class can be replaced in a derived class
+    \item but which one is called?
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      Polygon p;
+      p.draw(); // ?
+
+      Shape & s = p;
+      s.draw(); // ?
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \begin{tikzpicture}[node distance=1.5cm]
+      \classbox{Drawable}{
+        void draw();
+      }
+      \classbox[below of=Drawable]{Shape}{}
+      \classbox[below of=Shape]{Polygon}{
+        void draw();
+      }
+      \draw[very thick,-Triangle] (Polygon) -- (Shape);
+      \draw[very thick,-Triangle] (Shape) -- (Drawable);
+    \end{tikzpicture}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Virtual methods}
+  \begin{block}{the concept}
+    \begin{itemize}
+    \item methods can be declared \cppinline{virtual}
+    \item for these, the most derived object's implementation is used
+          (i.e.\ the dynamic type behind a pointer/reference)
+    \item for non-virtual methods, the static type of the variable decides
+    \end{itemize}
+  \end{block}
+  \begin{overprint}
+  \onslide<2>
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      Polygon p;
+      p.draw(); // Polygon.draw
+
+      Shape & s = p;
+      s.draw(); // Drawable.draw
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \begin{tikzpicture}[node distance=1.5cm]
+      \classbox{Drawable}{
+        \cppinline{void draw();}
+      }
+      \classbox[below of=Drawable]{Shape}{}
+      \classbox[below of=Shape]{Polygon}{
+        \cppinline{void draw();}
+      }
+      \draw[very thick,-Triangle] (Polygon) -- (Shape);
+      \draw[very thick,-Triangle] (Shape) -- (Drawable);
+    \end{tikzpicture}
+  \end{multicols}
+
+  \onslide<3>
+    \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2,highlightlines=5}
+      Polygon p;
+      p.draw(); // Polygon.draw
+
+      Shape & s = p;
+      s.draw(); // Polygon.draw
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \begin{tikzpicture}[node distance=1.5cm]
+      \classbox{Drawable}{
+        \cppinline{virtual void draw();}
+      }
+      \classbox[below of=Drawable]{Shape}{}
+      \classbox[below of=Shape]{Polygon}{
+        \cppinline{void draw();}
+      }
+      \draw[very thick,-Triangle] (Polygon) -- (Shape);
+      \draw[very thick,-Triangle] (Shape) -- (Drawable);
+    \end{tikzpicture}
+  \end{multicols}
+  \end{overprint}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Virtual methods - implications}
+  \begin{block}{Mechanics}
+    \begin{itemize}
+    \item virtual methods are dispatched at run time
+      \begin{itemize}
+      \item while non-virtual methods are bound at compile time
+      \end{itemize}
+    \item they also imply extra storage and an extra indirection
+      \begin{itemize}
+      \item practically, the object stores a pointer to the correct method
+      \item in a so-called ``virtual table'' (``vtable'')
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{alertblock}{Consequences}
+    \begin{itemize}
+    \item virtual methods are ``slower'' than standard ones
+    \item and they can rarely be inlined
+    \item templates are an alternative for performance-critical cases
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{{\texttt override} keyword}
+  \begin{block}{Principle}
+    \begin{itemize}
+    \item when overriding a virtual method
+    \item the \cppinline|override| keyword should be used
+    \item the \cppinline|virtual| keyword is then optional
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Practically}
+    \begin{cppcode}
+      struct Base {
+        virtual void some_func(float);
+      };
+      struct Derived : Base {
+        void some_func(float) override;
+      };
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Why was {\texttt override} keyword introduced?}
+  To detect the mistake in the following code :
+  \begin{block}{Without {\texttt override} (\cpp98)}
+    \begin{cppcode}
+      struct Base {
+        virtual void some_func(float);
+      };
+      struct Derived : Base {
+        void some_func(double); // oops !
+      };
+    \end{cppcode}
+  \end{block}
+  \begin{itemize}
+  \item with \cppinline|override|, you would get a compiler error
+  \item if you forget \cppinline|override| when you should have it, you get a compiler warning
+  \end{itemize}
+\end{frame}
+
+\begin{advanced}
+\begin{frame}[fragile]
+  \frametitlecpp[11]{{\texttt final} keyword}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item make sure you cannot further override a given virtual method
+    \item by declaring it final
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Practically}
+    \begin{cppcode}
+      struct Base {
+        virtual void some_func(float);
+      };
+      struct Intermediate : Base {
+        void some_func(float) final;
+      };
+      struct Derived : Intermediate {
+        void some_func(float) override; // error
+      };
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}
+\end{advanced}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Pure Virtual methods}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item unimplemented methods that must be overridden
+    \item marked by \cppinline{= 0} in the declaration
+    \item makes their class abstract
+    \item only non-abstract classes can be instantiated
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      // Error : abstract class
+      Shape s;
+
+      // ok, draw has been implemented
+      Polygon p;
+
+      // Shape type still usable
+      Shape & s = p;
+      s.draw();
+    \end{cppcode*}
+    \columnbreak
+    \begin{tikzpicture}[node distance=1.5cm]
+      \classbox{Drawable}{
+        \cppinline{virtual void draw() = 0;}
+      }
+      \classbox[below of=Drawable]{Shape}{}
+      \classbox[below of=Shape]{Polygon}{
+        \cppinline{void draw() override;}
+      }
+      \draw[very thick,-Triangle] (Polygon) -- (Shape);
+      \draw[very thick,-Triangle] (Shape) -- (Drawable);
+    \end{tikzpicture}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Polymorphism and destruction}
+  \begin{block}{Owning base pointers}
+    We sometimes need to maintain owning pointers to base classes:
+  \end{block}
+  \begin{overprint}
+    \onslide<1>
+  \begin{cppcode}
+    struct Drawable {
+       virtual void draw() = 0;
+    };
+    Drawable* getImpl();
+
+    Drawable* p = getImpl();
+    p->draw();
+    delete p;
+  \end{cppcode}
+    \onslide<2>
+  \begin{cppcode}
+    struct Drawable {
+       virtual void draw() = 0;
+    };
+    std::unique_ptr<Drawable> getImpl(); // better API
+
+    auto p = getImpl();
+    p->draw();
+  \end{cppcode}
+  \end{overprint}
+  \begin{block}{}
+    \begin{itemize}
+      \item What happens when \cppinline{p} is deleted?
+      \item What if a class deriving from \cppinline{Drawable} has a destructor?
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Polymorphism and destruction}
+  \begin{block}{Virtual destructors}
+    \begin{itemize}
+    \item We can mark a destructor as \cppinline{virtual}
+    \item This selects the right destructor based on the runtime type
+    \end{itemize}
+  \end{block}
+  \begin{cppcode}
+    struct Drawable {
+       virtual ~Drawable() = default;
+       virtual void draw() = 0;
+    };
+    Drawable* p = getImpl(); // returns derived obj.
+    p->draw();
+    delete p; // dynamic dispatch to right destructor
+  \end{cppcode}
+  \begin{goodpractice}{Virtual destructors}
+    If you expect users to inherit from your class and override methods (i.e.\ use your class polymorphically), declare its destructor \cppinline{virtual}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Pure Abstract Class aka Interface}
+  \begin{block}{Definition of pure abstract class}
+    \begin{itemize}
+    \item a class that has
+      \begin{itemize}
+        \item no data members
+        \item all its methods pure virtual
+        \item a \cppinline{virtual} destructor
+      \end{itemize}
+    \item the equivalent of an Interface in Java
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      struct Drawable {
+        virtual ~Drawable()
+                      = default;
+        virtual void draw() = 0;
+      }
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \begin{tikzpicture}[node distance=1.5cm]
+      \classbox{Drawable}{
+        virtual void draw() = 0;
+      }
+    \end{tikzpicture}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Overriding overloaded methods}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item overriding an overloaded method will hide the others
+    \item unless you inherit them using \cppinline{using}
+    \end{itemize}
+  \end{block}
+  \begin{cppcode*}{gobble=0}
+    struct BaseClass {
+      virtual int foo(std::string);
+      virtual int foo(int);
+    };
+    struct DerivedClass : BaseClass {
+      using BaseClass::foo;
+      int foo(std::string) override;
+    };
+    DerivedClass dc;
+    dc.foo(4);      // error if no using
+    \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Polymorphism}
+  \begin{exercise}{Polymorphism}
+    \begin{itemize}
+    \item go to \texttt{exercises/polymorphism}
+    \item look at the code
+    \item open trypoly.cpp
+    \item create a Pentagon, call its perimeter method
+    \item create a Hexagon, call its perimeter method
+    \item create a Hexagon, call its parent's perimeter method
+    \item retry with virtual methods
+    \end{itemize}
+  \end{exercise}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Multiple Inheritance}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item one class can inherit from multiple parents
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{tikzpicture}[]
+      \classbox[]{Polygon}{}
+      \classbox[below of=Polygon,node distance=1.5cm]{Rectangle}{}
+      \classbox[right of=Rectangle,node distance=3cm]{Text}{}
+      \classbox[below right of=Rectangle,node distance=2cm]{TextBox}{}
+      \draw[very thick,Triangle-] (Polygon) -- (Rectangle);
+      \draw[very thick,Triangle-] (Rectangle) -- (TextBox);
+      \draw[very thick,Triangle-] (Text) -- (TextBox);
+    \end{tikzpicture}
+    \columnbreak
+    \vspace{2cm}
+    \begin{cppcode*}{gobble=2}
+      class TextBox :
+        public Rectangle, Text {
+        // inherits from both
+        // publicly from Rectangle
+        // privately from Text
+      }
+    \end{cppcode*}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{The diamond shape}
+  \begin{block}{Definition}
+    \begin{itemize}
+    \item situation when one class inherits several times from a given grand parent
+    \end{itemize}
+  \end{block}
+  \begin{alertblock}{Problem}
+    \begin{itemize}
+    \item are the members of the grand parent replicated?
+    \end{itemize}
+  \end{alertblock}
+  \vfill
+  \hspace{2.5cm}
+  \begin{tikzpicture}[]
+    \classbox[]{Drawable}{}
+    \classbox[below left of=Drawable,node distance=2cm]{Rectangle}{}
+    \classbox[right of=Rectangle,node distance=3cm]{Text}{}
+    \classbox[below right of=Rectangle,node distance=2cm]{TextBox}{}
+    \draw[very thick,Triangle-] (Drawable) -- (Rectangle);
+    \draw[very thick,Triangle-] (Drawable) -- (Text);
+    \draw[very thick,Triangle-] (Rectangle) -- (TextBox);
+    \draw[very thick,Triangle-] (Text) -- (TextBox);
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Virtual inheritance}
+  \begin{block}{Solution}
+    \begin{itemize}
+    \item inheritance can be \cppinline{virtual} or not
+    \begin{itemize}
+      \item \cppinline{virtual} inheritance will ``share'' parents
+      \item standard inheritance will replicate them
+    \end{itemize}
+    \item most derived class will call the virtual base class's constructor
+    \end{itemize}
+    \begin{cppcode}
+      class Text : public virtual Drawable {...};
+      class Rectangle : public virtual Drawable {...};
+    \end{cppcode}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{tikzpicture}[]
+      \classbox{Drawable}{}
+      \classbox[below left of=Drawable,node distance=2cm]{Rectangle}{}
+      \classbox[right of=Rectangle,node distance=3cm]{Text}{}
+      \classbox[below right of=Rectangle,node distance=2cm]{TextBox}{}
+      \draw[very thick,Triangle-] (Drawable) -- node[below,pos=0.35,sloped] {\scriptsize virtual} (Rectangle);
+      \draw[very thick,Triangle-] (Drawable) -- node[below,pos=0.45,sloped] {\scriptsize virtual} (Text);
+      \draw[very thick,Triangle-] (Rectangle) -- (TextBox);
+      \draw[very thick,Triangle-] (Text) -- (TextBox);
+    \end{tikzpicture}
+    \columnbreak
+    \begin{tikzpicture}[]
+      \classbox[]{Drawable1}{}
+      \classbox[below of=Drawable1,node distance=1.5cm]{Rectangle}{}
+      \draw[very thick,Triangle-] (Drawable1) -- (Rectangle);
+      \classbox[right of=Drawable1,node distance=3cm]{Drawable2}{}
+      \classbox[below of=Drawable2,node distance=1.5cm]{Text}{}
+      \draw[very thick,Triangle-] (Drawable2) -- (Text);
+      \classbox[below right of=Rectangle,node distance=2cm]{TextBox}{}
+      \draw[very thick,Triangle-] (Rectangle) -- (TextBox);
+      \draw[very thick,Triangle-] (Text) -- (TextBox);
+    \end{tikzpicture}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Multiple inheritance advice}
+  \begin{goodpractice}{Avoid multiple inheritance}
+    \begin{itemize}
+      \item Except for inheriting from interfaces (=no data members)
+      \item And for rare special cases
+    \end{itemize}
+
+    \hspace*{0.05\textwidth}\begin{minipage}{0.9\textwidth}
+      \begin{alertblock}{Absolutely avoid diamond-shape inheritance}
+        \begin{itemize}
+        \item This is a sign that your architecture is not correct
+        \item In case you are tempted, think twice and change your mind
+        \end{itemize}
+      \end{alertblock}
+    \end{minipage}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Virtual inheritance}
+  \begin{exerciseWithShortcut}{Virtual inheritance}{Virtual OO}
+    \begin{itemize}
+    \item go to \texttt{exercisescode/virtual\_inheritance}
+    \item look at the code
+    \item open trymultiherit.cpp
+    \item create a TextBox and call draw
+    \item Fix the code to call both draws by using types
+    \item retry with virtual inheritance
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}

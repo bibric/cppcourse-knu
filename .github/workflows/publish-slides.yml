@@ -1,0 +1,54 @@
+name: Publish LaTeX slides
+on:
+  push:
+    paths:
+      - 'talk/**'
+    branches:
+      - master
+
+jobs:
+  publish-slides:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: [ essentials, full ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Essentials document
+        if: matrix.version == 'essentials'
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: C++Course.tex
+          latexmk_use_xelatex: true
+          args: -f -pdf -interaction=nonstopmode -shell-escape -usepretex=\def\makebasic{}
+          working_directory: talk
+          extra_system_packages: "py-pygments"
+      - name: Compile Full document
+        if: matrix.version == 'full'
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: C++Course.tex
+          latexmk_use_xelatex: true
+          args: -f -pdf -interaction=nonstopmode -shell-escape
+          working_directory: talk
+          extra_system_packages: "py-pygments"
+      - name: Commit to download repository
+        run: |
+          set -x
+          git clone -b download https://${GITHUB_ACTOR}:${{secrets.GITHUB_TOKEN}}@github.com/${{github.repository}}.git download
+          cd download
+          mkdir -p talk
+          cp ../talk/C++Course.pdf "talk/C++Course_${{ matrix.version }}.pdf"
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add -f "talk/C++Course_${{ matrix.version }}.pdf"
+          if (git diff --quiet) || (git diff --staged --quiet)
+          then
+            git commit --amend -m "Update C++Course.pdf"
+            until git push --force-with-lease origin download; do
+              git pull --rebase origin download
+            done
+          else
+            echo "No changes to commit"
+          fi
+          git push

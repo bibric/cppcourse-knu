@@ -1,0 +1,313 @@
+\subsection[Control]{Control structures}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: if}
+  \begin{block}{if syntax}
+    \begin{cppcode*}{}
+      if (condition1) {
+        Statement1; Statement2;
+      } else if (condition2)
+        OnlyOneStatement;
+      else {
+        Statement3;
+        Statement4;
+      }
+    \end{cppcode*}
+    \begin{itemize}
+      \item The \cppinline{else} and \cppinline{else if} clauses are optional
+      \item The \cppinline{else if} clause can be repeated
+      \item Braces are optional if there is a single statement
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: if}
+  \begin{exampleblock}{Practical example}
+    \begin{cppcode*}{}
+      int collatz(int a) {
+        if (a <= 0) {
+          std::cout << "not supported\n";
+          return 0;
+        } else if (a == 1) {
+          return 1;
+        } else if (a%2 == 0) {
+          return collatz(a/2);
+        } else {
+          return collatz(3*a+1);
+        }
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: conditional operator}
+  \begin{block}{Syntax}
+    \begin{cppcode*}{linenos=false}
+      test ? expression1 : expression2;
+    \end{cppcode*}
+    \vspace{-0.2cm}
+    \begin{itemize}
+      \item If test is \cppinline{true} \cppinline{expression1} is returned
+      \item Else, \cppinline{expression2} is returned
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Practical example}
+    \begin{cppcode*}{}
+      const int charge = isLepton ? -1 : 0;
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \begin{alertblock}{Do not abuse it}
+    \begin{cppcode*}{}
+      int collatz(int a) {
+        return a==1 ? 1 : collatz(a%2==0 ? a/2 : 3*a+1);
+      }
+    \end{cppcode*}
+    \begin{itemize}
+      \item Explicit \cppinline{if}s are generally easier to read
+      \item Use the ternary operator with short conditions and expressions
+      \item Avoid nesting
+    \end{itemize}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: switch}
+  \begin{block}{Syntax}
+    \begin{cppcode*}{gobble=0}
+      switch(identifier) {
+        case c1 : statements1; break;
+        case c2 : statements2; break;
+        case c3 : statements3; break;
+        ...
+        default : statementsn; break;
+      }
+    \end{cppcode*}
+    \begin{itemize}
+      \item The \cppinline{break} statement is not mandatory but...
+      \item Cases are entry points, not independent pieces
+      \item Execution ``falls through'' to the next case without a \cppinline{break}!
+      \item The \cppinline{default} case may be omitted
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{alertblock}{Use break}
+    Avoid \cppinline{switch} statements with fall-through cases
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: switch}
+  \begin{exampleblock}{Practical example}
+    \begin{cppcode*}{}
+      enum class Lang { French, German, English, Other };
+      Lang language = ...;
+      switch (language) {
+        case Lang::French:
+          std::cout << "Bonjour";
+          break;
+        case Lang::German:
+          std::cout << "Guten Tag";
+          break;
+        case Lang::English:
+          std::cout << "Good morning";
+          break;
+        default:
+          std::cout << "I do not speak your language";
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\AtBeginEnvironment{minted}{\renewcommand{\fcolorbox}[4][]{#4}}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{\texttt{[[fallthrough]]} attribute}
+  \begin{block}{New compiler warning}
+    Since \cpp17, compilers are encouraged to warn on fall-through
+  \end{block}
+  \begin{exampleblock}{\cpp17}
+    \begin{cppcode*}{}
+      switch (c) {
+        case 'a':
+          f();    // Warning emitted
+        case 'b': // Warning probably suppressed
+        case 'c':
+          g();
+          [[fallthrough]]; // Warning suppressed
+        case 'd':
+          h();
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Init-statements for if and switch}
+  \begin{block}{Purpose}
+    Allows to limit variable scope in \cppinline{if} and \cppinline{switch} statements
+  \end{block}
+  \begin{exampleblock}{\cpp17}
+    \begin{cppcode*}{}
+      if (Value val = GetValue(); condition(val)) {
+        f(val); // ok
+      } else
+        g(val); // ok
+      h(val);   // error, no `val` in scope here
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \begin{alertblock}{\cpp98}
+    Don't confuse with a variable declaration as condition:
+    \begin{cppcode*}{firstnumber=7}
+      if (Value* val = GetValuePtr())
+        f(*val);
+    \end{cppcode*}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: for loop}
+  \begin{block}{for loop syntax}
+    \begin{cppcode*}{}
+      for(initializations; condition; increments) {
+        statements;
+      }
+    \end{cppcode*}
+    \vspace{-0.2cm}
+    \begin{itemize}
+      \item Multiple initializations / increments are comma separated
+      \item Initializations can contain declarations
+      \item Braces are optional if loop body is a single statement
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Practical example}
+    \begin{cppcode*}{firstnumber=4}
+      for(int i = 0, j = 0 ; i < 10 ; i++, j = i*i) {
+        std::cout << i << "^2 is " << j << '\n';
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \begin{goodpractice}[\texttt{for} syntax]{Don't abuse the \texttt{for} syntax}
+    \begin{itemize}
+      \item The \cppinline{for} loop head should fit in 1-3 lines
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Range-based loops}
+  \begin{block}{Reason of being}
+    \begin{itemize}
+    \item Simplifies loops over ``ranges'' tremendously
+    \item Especially with STL containers and ranges
+    \end{itemize}
+  \end{block}
+  \begin{block}{Syntax}
+    \begin{cppcode*}{}
+      for ( type iteration_variable : range ) {
+        // body using iteration_variable
+      }
+    \end{cppcode*}
+  \end{block}
+  \begin{exampleblock}{Example code}
+    \begin{cppcode*}{firstnumber=4}
+      int v[4] = {1,2,3,4};
+      int sum = 0;
+      for (int a : v) { sum += a; }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{Init-statements for range-based loops}
+  \begin{block}{Purpose}
+    Allows to limit variable scope in range-based loops
+  \end{block}
+  \begin{alertblock}{\cpp17}
+    \begin{cppcode*}{}
+      std::array data = {"hello", ",", "world"};
+      std::size_t i = 0;
+      for (auto& d : data) {
+        std::cout << i++ << ' ' << d << '\n';
+      }
+    \end{cppcode*}
+  \end{alertblock}
+  \begin{exampleblock}{\cpp20}
+    \begin{cppcode*}{firstnumber=6}
+      for (std::size_t i = 0; auto const & d : data) {
+        std::cout << i++ << ' ' << d << '\n';
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: while loop}
+  \begin{block}{while loop syntax}
+    \begin{cppcode*}{}
+      while(condition) {
+        statements;
+      }
+
+      do {
+        statements;
+      } while(condition);
+    \end{cppcode*}
+    \begin{itemize}
+      \item Braces are optional if the body is a single statement
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{alertblock}{Bad example}
+    \begin{cppcode*}{}
+      while (n != 1)
+        if (0 == n%2) n /= 2;
+        else n = 3 * n + 1;
+    \end{cppcode*}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Control structures: jump statements}
+  \begin{block}{}
+    \begin{description}
+    \item[break] Exits the loop and continues after it
+    \item[continue] Goes immediately to next loop iteration
+    \item[return] Exits the current function
+    \item[goto] Can jump anywhere inside a function, avoid!
+    \end{description}
+  \end{block}
+  \pause
+  \begin{alertblock}{Bad example}
+    \begin{cppcode*}{}
+      while (1) {
+        if (n == 1) break;
+        if (0 == n%2) {
+          std::cout << n << '\n';
+          n /= 2;
+          continue;
+        }
+        n = 3 * n + 1;
+      }
+    \end{cppcode*}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Control structures}
+  \begin{exerciseWithShortcut}{Control structures}{Control structs}
+    Familiarise yourself with different kinds of control structures. Re-implement them in different ways.
+    \begin{itemize}
+      \item Go to \texttt{exercises/control}
+      \item Look at \texttt{control.cpp}
+      \item Compile it (\texttt{make}) and run the program (\texttt{./control})
+      \item Work on the tasks that you find in \texttt{README.md}
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}

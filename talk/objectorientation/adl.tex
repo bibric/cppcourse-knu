@@ -1,0 +1,238 @@
+\subsection[ADL]{Name Lookups}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Basics of name lookup}
+  \begin{exampleblock}{Example code}
+    \begin{cppcode}
+      std::cout << std::endl;
+    \end{cppcode}
+  \end{exampleblock}
+  \begin{block}{How to find the declaration of a name?}
+    Mainly 2 cases :
+    \begin{itemize}
+    \item qualified lookup, for names preceded by `::'
+      \begin{itemize}
+      \item here \cppinline{cout} and \cppinline{endl}
+      \item name is only looked for in given class/namespace/enum class
+      \end{itemize}
+    \item unqualified lookup
+      \begin{itemize}
+      \item here for \cppinline{std} and \cppinline{operator<<}
+      \item name is looked for in a sequence of scopes until found
+        \begin{itemize}
+        \item remaining scopes are not examined
+        \end{itemize}
+      \item in parallel Argument Dependent Loopkup (ADL) may happen
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitlecpp[98]{Unqualified name lookup and ADL}
+  \begin{block}{Ordered list of scopes (simplified)}
+    \begin{itemize}
+    \item file (only for global level usage)
+    \item current namespace/block, enclosing namespaces/blocks, etc...
+    \item current class if any, base classes if any, etc...
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Argument Dependent Lookup (simplified)}
+    Only for call expression
+    \begin{itemize}
+    \item e.g.\ \cppinline{f(a, b)} or \cppinline{a + b}
+    \end{itemize}
+    The compiler also examines arguments one by one and searches:
+    \begin{itemize}
+    \item class, if any
+    \item direct and indirect base classes, if any
+    \item enclosing namespace
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{ADL consequences (1)}
+  \begin{block}{Use standalone/non-member functions}
+    When a method is not accessing the private part of a class, make it a function in the same namespace
+    \vspace{-1mm}
+    \begin{columns}[T]
+      \begin{column}{.35\textwidth}
+        Don't write :
+        \vspace{-1mm}
+        \begin{cppcode*}{gobble=6}
+          namespace MyNS {
+            struct A {
+              T func(...);
+            };
+          }
+        \end{cppcode*}
+      \end{column}
+      \begin{column}{.35\textwidth}
+        Prefer :
+        \vspace{-1mm}
+        \begin{cppcode*}{gobble=6,firstnumber=6}
+          namespace MyNS {
+            struct A { ... };
+            T func(const A&, ..);
+          }
+        \end{cppcode*}
+      \end{column}
+    \end{columns}
+    \vspace{.2cm}
+    Advantages :
+    \begin{itemize}
+    \item minimal change in user code, \cppinline{func} still feels part of class \cppinline{A}
+    \item makes sure \cppinline{func} does not touch internal state of \cppinline{A}
+    \end{itemize}
+    Notes :
+    \begin{itemize}
+    \item non-member \cppinline{func} has to be in same namespace as \cppinline{A}
+    \item please avoid global namespace
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{ADL consequences (2)}
+  \begin{block}{Customization points and \texttt{using}}
+    \begin{columns}[t]
+      \begin{column}{.35\textwidth}
+        Don't write :
+        \begin{cppcode*}{gobble=6}
+          N::A a,b;
+          std::swap(a, b);
+        \end{cppcode*}
+      \end{column}
+      \begin{column}{.35\textwidth}
+        Prefer :
+        \begin{cppcode*}{gobble=6,firstnumber=3}
+          N::A a,b;
+          using std::swap;
+          swap(a, b);
+        \end{cppcode*}
+      \end{column}
+    \end{columns}
+    \vspace{.2cm}
+    Advantages :
+    \begin{itemize}
+    \item allows to use \cppinline{std::swap} by default
+    \item but benefits from any dedicated overload
+    \end{itemize}
+    \begin{columns}
+      \begin{column}{.7\textwidth}
+        \begin{cppcode*}{gobble = 6,firstnumber=6}
+          namespace N {
+            class A { ... };
+            // optimized swap for A
+            void swap(A&, A&);
+          }
+        \end{cppcode*}
+      \end{column}
+    \end{columns}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Hidden Friends}
+  \begin{block}{Hidden friends}
+    \begin{itemize}
+      \item Friend functions \emph{defined} in class scope are ``hidden friends''
+      \begin{itemize}
+        \item Without any declaration outside the class
+      \end{itemize}
+      \item They are \emph{not} member functions (no access to \cppinline{this})
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{\texttt{operator<<} as hidden friend}
+    \small
+    \begin{cppcode*}{gobble=2}
+      class Complex {
+        float m_real, m_imag;
+      public:
+        Complex(float, float) { ... }
+        friend
+        std::ostream & operator<<(std::ostream & os,
+                                  Complex const & c) {
+          return os << c.m_real << " + " << c.m_imag << "i";
+        }
+      };
+      std::cout << Complex{2.f, 3.f}; // Prints 2 + 3i
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Hidden Friends and ADL}
+  \begin{block}{Advantages of hidden friends}
+    \begin{itemize}
+      \item Are \emph{only} found via ADL, e.g.\ \cppinline{std::cout << complex;}
+      \item Compiler needs to consider less functions during ordinary name lookup (faster compilation)
+      \item Avoid accidental implicit conversions
+    \end{itemize}
+  \end{block}
+  \begin{alertblock}{Accidental conversions - two counterexamples}
+    \footnotesize
+    \begin{overprint}
+    \onslide<1>
+    \begin{cppcode*}{gobble=2}
+      std::ostream & operator<< // out-of-class definition
+        (std::ostream & os, Complex const & c) { ... }
+      struct Fraction {
+        int num, denom;
+        operator Complex() const { ... } // conversion op
+      };
+
+      std::cout << Fraction{2,4}; // Prints 0.5 + 0i
+      //calls operator<<(std::cout, Fraction{2,4}.operator Complex());
+    \end{cppcode*}
+
+    \onslide<2>
+    \begin{cppcode*}{gobble=2}
+      std::ostream & operator<< // out-of-class definition
+        (std::ostream & os, Complex const & c) { ... }
+      struct Fraction {
+        int num, denom;
+      };
+
+      Complex::Complex(Fraction f); // converting ctor
+
+      std::cout << Fraction{2,4}; // Prints 0.5 + 0i
+      //calls operator<<(std::cout, Complex(Fraction{2, 3}));
+    \end{cppcode*}
+    \end{overprint}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Good practice for operator overloading}
+  \begin{goodpractice}{Operator overloading}
+    \begin{itemize}
+      \item Must declare in-class, as member operators:
+      \begin{itemize}
+        \item \cppinline{operator=}, \cppinline{operator()}, \cppinline{operator[]}, \cppinline{operator->}
+      \end{itemize}
+      \item Prefer in-class declaration, as member operators:
+      \begin{itemize}
+        \item compound assignment operators, e.g.\ \cppinline{operator+=}
+        \item unary operators
+        \begin{itemize}
+          \item e.g.\ \cppinline{operator++}, \cppinline{operator--}, \cppinline{operator!}, unary \cppinline{operator-} (negate), dereference operator \cppinline{operator*}
+        \end{itemize}
+      \end{itemize}
+      \item Prefer definition in-class as hidden friends:
+      \begin{itemize}
+        \item binary arithmetic operators, e.g.\ \cppinline{operator+}, \cppinline{operator|}
+        \item binary logical operators, e.g.\ \cppinline{operator<}
+        \item stream operators, e.g.\ \cppinline{operator<<}
+      \end{itemize}
+      \item Avoid overloading:
+      \begin{itemize}
+        \item Address-of \cppinline{operator&}
+        \item Boolean logic operators, e.g.\ \cppinline{operator||}
+        \item Comma operator \cppinline{operator,}
+        \item Member dereference operators \cppinline{operator->*}
+      \end{itemize}
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}

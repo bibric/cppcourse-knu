@@ -1,0 +1,316 @@
+\subsection[construct]{Constructors/destructors}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Class constructors and destructors}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item special functions called when building/destroying an object
+    \item a class can have several constructors, but only one destructor
+    \item the constructors have the same name as the class
+    \item same for the destructor with a leading \cppinline{~}
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      class C {
+      public:
+        C();
+        C(int a);
+        ~C();
+        ...
+      protected:
+        int a;
+      };
+    \end{cppcode*}
+    \columnbreak
+    \begin{cppcode*}{gobble=2,firstnumber=10}
+      // note: special notation for
+      // initialization of members
+      C::C() : a(0) {}
+
+      C::C(int a) : a(a) {}
+
+      C::~C() {}
+    \end{cppcode*}
+  \end{multicols}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Class constructors and destructors}
+  \begin{cppcode}
+    class Vector {
+    public:
+      Vector(int n);
+      ~Vector();
+      void setN(int n, int value);
+      int getN(int n);
+    private:
+      int len;
+      int* data;
+    };
+    Vector::Vector(int n) : len(n) {
+      data = new int[n];
+    }
+    Vector::~Vector() {
+      delete[] data;
+    }
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Constructors and inheritance}
+  \begin{cppcode}
+    struct First {
+      int a;
+      First() {} // leaves a uninitialized
+      First(int a) : a(a) {}
+    };
+    struct Second : First {
+      int b;
+      Second();
+      Second(int b);
+      Second(int a, int b);
+    };
+    Second::Second() : First(), b(0) {}
+    Second::Second(int b) : b(b) {} // First() implicitly
+    Second::Second(int a, int b) : First(a), b(b) {}
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Copy constructor}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item special constructor called for replicating an object
+    \item takes a single parameter of type \cppinline{const &} to class
+    \item provided by the compiler if not declared by the user
+    \item in order to forbid copy, use \cppinline{= delete} (see next slides)
+      \begin{itemize}
+      \item or private copy constructor with no implementation in \cpp98
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{cppcode}
+    struct C {
+      C();
+      C(const C &other);
+    };
+  \end{cppcode}
+  \pause
+  \begin{goodpractice}[Rule of 3/5]{The rule of 3/5 (\cpp98/11) - \href{https://en.cppreference.com/w/cpp/language/rule_of_three}{cppreference}}
+    if a class needs a custom destructor, a copy/move constructor or a copy/move assignment operator, it should have all three/five.
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Class Constructors and Destructors}
+  \begin{cppcode}
+    class Vector {
+    public:
+      Vector(int n);
+      Vector(const Vector &other);
+      ~Vector();
+    private:
+      int len; int* data;
+    };
+    Vector::Vector(int n) : len(n) {
+      data = new int[n];
+    }
+    Vector::Vector(const Vector &other) : len(other.len) {
+      data = new int[len];
+      std::copy(other.data, other.data + len, data);
+    }
+    Vector::~Vector() { delete[] data; }
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Explicit unary constructor}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item A constructor with a single non-default parameter can be used by the compiler for an implicit conversion.
+    \end{itemize}
+  \end{block}
+  \begin{exampleblockGB}{Example}{https://godbolt.org/z/TvqT185fz}{Unary constructor}
+    \begin{cppcode}
+    void print(const Vector & v) {
+      std::cout << "printing v elements...\n";
+    }
+
+    int main {
+      // calls Vector::Vector(int n) to construct a Vector
+      // then calls print with that Vector
+      print(3);
+    };
+    \end{cppcode}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Explicit unary constructor}
+  \begin{block}{Concept}
+    \begin{itemize}
+      \item The keyword \cppinline{explicit} forbids such implicit conversions.
+      \item It is recommended to use it systematically, except in special cases.
+    \end{itemize}
+  \end{block}
+  \begin{cppcode}
+    class Vector {
+    public:
+      explicit Vector(int n);
+      Vector(const Vector &other);
+      ~Vector();
+      ...
+    };
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Defaulted Constructor}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item avoid empty default constructors like \cppinline{ClassName() {}}
+    \item declare them as \cppinline{= default}
+    \end{itemize}
+  \end{block}
+  \begin{block}{Details}
+    \begin{itemize}
+    \item without a user-defined constructor, a default one is provided
+    \item any user-defined constructor disables the default one
+    \item but the default one can be requested explicitly
+    \item rule can be more subtle depending on data members
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Practically}
+    \begin{cppcode}
+      Class() = default; // provide default if possible
+      Class() = delete;  // disable default constructor
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Delegating constructor}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item avoid replication of code in several constructors
+    \item by delegating to another constructor, in the initialization list
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Practically}
+    \begin{cppcode}
+      struct Delegate {
+        int m_i;
+        Delegate(int i) : m_i(i) {
+          ... complex initialization ...
+        }
+        Delegate() : Delegate(42) {}
+      };
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Constructor inheritance}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item avoid having to redeclare parent's constructors
+    \item by stating that we inherit all parent constructors
+    \item derived class can add more constructors
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Practically}
+    \begin{cppcode}
+      struct Base {
+        Base(int a);           // ctor 1
+      };
+      struct Derived : Base {
+        using Base::Base;
+        Derived(int a, int b); // ctor 2
+      };
+      Derived d{5};    // calls ctor 1
+      Derived d{5, 6}; // calls ctor 2
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Member initialization}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item avoid redefining same default value for members n times
+    \item by defining it once at member declaration time
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Practically}
+    \begin{cppcode}
+      struct Base {
+        int a{5}; // also possible: int a = 5;
+        Base() = default;
+        Base(int _a) : a(_a) {}
+      };
+      struct Derived : Base {
+        int b{6};
+        using Base::Base;
+      };
+      Derived d1;    // a = 5, b = 6
+      Derived d2{7}; // a = 7, b = 6
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Calling constructors}
+  \begin{block}{After object declaration, arguments within \{\}}
+    \begin{cppcode*}{gobble=2}
+      struct A {
+        int a;
+        float b;
+        A();
+        A(int);
+        A(int, int);
+      };
+
+      A a{1,2};    // A::A(int, int)
+      A a{1};      // A::A(int)
+      A a{};       // A::A()
+      A a;         // A::A()
+      A a = {1,2}; // A::A(int, int)
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Calling constructors the old way}
+  \begin{block}{Arguments are given within (), aka \cpp98 nightmare}
+    \begin{cppcode*}{gobble=2}
+      struct A {
+        int a;
+        float b;
+        A();
+        A(int);
+        A(int, int);
+      };
+
+      A a(1,2);    // A::A(int, int)
+      A a(1);      // A::A(int)
+      A a();       // declaration of a function!
+      A a;         // A::A()
+      A a = (1,2); // A::A(int), comma operator!
+      A a = {1,2}; // not allowed
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Constructing arrays and vectors}
+  \begin{exampleblock}{List of items given within \{\}}
+    \begin{cppcode*}{firstnumber=10}
+     int ip[3]{1,2,3};
+     int* ip = new int[3]{1,2,3}; // not allowed in C++98
+     std::vector<int> v{1,2,3};   // same
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}

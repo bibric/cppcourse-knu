@@ -1,0 +1,156 @@
+\subsection[OO]{Objects and Classes}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{What are classes and objects}
+  \begin{block}{Classes (or ``user-defined types'')}
+    C structs on steroids
+    \begin{itemize}
+    \item with inheritance
+    \item with access control
+    \item including methods (aka.\ member functions)
+    \end{itemize}
+  \end{block}
+  \begin{block}{Objects}
+    \begin{itemize}
+    \item instances of classes
+    \end{itemize}
+  \end{block}
+  \begin{block}{A class encapsulates state and behavior of ``something''}
+    \begin{itemize}
+    \item shows an interface
+    \item provides its implementation
+      \begin{itemize}
+      \item status, properties
+      \item possible interactions
+      \item construction and destruction
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{My first class}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      struct MyFirstClass {
+        int a;
+        void squareA() {
+          a *= a;
+        }
+        int sum(int b) {
+          return a + b;
+        }
+      };
+
+      MyFirstClass myObj;
+      myObj.a = 2;
+
+      // let's square a
+      myObj.squareA();
+    \end{cppcode*}
+    \columnbreak
+    \center
+    \null \vfill
+    \begin{tikzpicture}
+      \classbox{MyFirstClass}{
+        int a; \\
+        void squareA(); \\
+        int sum(int b);
+      }
+    \end{tikzpicture}
+    \vfill \null
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Separating the interface}
+  \begin{columns}[t]
+    \begin{column}{.45\textwidth}
+    \begin{block}{Header: MyClass.hpp}
+      \begin{cppcode*}{gobble=4}
+        #pragma once
+        struct MyClass {
+          int a;
+          void squareA();
+        };
+      \end{cppcode*}
+    \end{block}
+    \begin{block}{Implementation: MyClass.cpp}
+      \begin{cppcode*}{gobble=4}
+        #include "MyClass.hpp"
+        void MyClass::squareA() {
+          a *= a;
+        }
+      \end{cppcode*}
+    \end{block}
+    \end{column}
+    \begin{column}{.45\textwidth}
+    \begin{block}{User 1: main.cpp}
+      \begin{cppcode*}{gobble=4}
+        #include "MyClass.hpp"
+        int main() {
+          MyClass mc;
+          ...
+        }
+      \end{cppcode*}
+    \end{block}
+    \begin{block}{User 2: fun.cpp}
+      \begin{cppcode*}{gobble=4}
+        #include "MyClass.hpp"
+        void f(MyClass& mc) {
+          mc.squareA();
+        }
+      \end{cppcode*}
+    \end{block}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Implementing methods}
+  \begin{goodpractice}{Implementing methods}
+    \begin{itemize}
+    \item usually in .cpp, outside of class declaration
+    \item using the class name as ``namespace''
+    \item short member functions can be in the header
+    \item some functions (templates, \cppinline{constexpr}) must be in the header
+    \end{itemize}
+  \end{goodpractice}
+  \begin{block}{}
+    \begin{cppcode}
+    #include "MyFirstClass.hpp"
+
+    void MyFirstClass::squareA() {
+      a *= a;
+    }
+    int MyFirstClass::sum(int b) {
+      return a + b;
+    }
+    \end{cppcode}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Method overloading}
+  \begin{block}{The rules in \cpp}
+    \begin{itemize}
+    \item overloading is authorized and welcome
+    \item signature is part of the method identity
+    \item but not the return type
+    \end{itemize}
+  \end{block}
+  \begin{cppcode}
+    struct MyFirstClass {
+      int a;
+      int sum(int b);
+      int sum(int b, int c);
+    };
+
+    int MyFirstClass::sum(int b) { return a + b; }
+
+    int MyFirstClass::sum(int b, int c) {
+      return a + b + c;
+    }
+  \end{cppcode}
+\end{frame}

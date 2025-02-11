@@ -1,0 +1,78 @@
+\subsection[inline]{Inline keyword}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Inline keyword}
+  \begin{block}{Inline functions originally}
+    \begin{itemize}
+      \item Applies to a function to tell the compiler to inline it
+        \begin{itemize}
+        \item That is, replace function calls by the function's content\\
+              (similar to how a macro works)
+        \end{itemize}
+      \item Only a hint, compiler can still choose to not inline
+      \item Avoids call overhead at the cost of increasing binary size
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Major side effect}
+    \begin{itemize}
+      \item The linker reduces the duplicated functions into one
+      \item An inline function definition can thus live in header files
+    \end{itemize}
+  \end{exampleblock}
+  \begin{block}{}
+    \begin{cppcode*}{}
+      inline int mult(int a, int b) {
+        return a * b;
+      }
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Inline keyword}
+  \begin{block}{Inline functions nowadays}
+    \begin{itemize}
+      \item Compilers can judge far better when to inline or not
+        \begin{itemize}
+        \item thus primary purpose is gone
+        \end{itemize}
+      \item Putting functions into headers became main purpose
+      \item Many types of functions are marked \cppinline{inline} by default:
+      \begin{itemize}
+        \item function templates
+        \item \cppinline{constexpr} functions
+        \item class member functions
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Inline keyword}
+  \begin{block}{Inline variables}
+    \begin{itemize}
+      \item Global (or \cppinline{static} member) variable specified as \cppinline{inline}
+      \item Same side effect, linker merges all occurrences into one
+      \item Allows to define global variables/constants in headers
+    \end{itemize}
+  \end{block}
+  \begin{block}{}
+    \small
+    \begin{cppcode*}{}
+      // global.h
+      inline int count = 0;
+      inline const std::string filename = "output.txt";
+      // a.cpp
+      #include "global.h"
+      int f() { return count; }
+      // b.cpp
+      #include "global.h"
+      void g(int i) { count += i; }
+    \end{cppcode*}
+  \end{block}
+  \begin{alertblock}{}
+    \begin{itemize}
+      \item Avoid global variables! Global constants are fine.
+    \end{itemize}
+  \end{alertblock}
+\end{frame}

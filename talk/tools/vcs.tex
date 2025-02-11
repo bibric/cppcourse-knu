@@ -1,0 +1,49 @@
+\subsection[VCS]{Version control}
+
+\begin{frame}[fragile]
+  \frametitle{Version control}
+  \begin{alertblock}{Please use one!}
+    \begin{itemize}
+    \item Even locally
+    \item Even on a single file
+    \item Even if you are the only committer
+    \end{itemize}
+    It will soon save your day
+  \end{alertblock}
+  \begin{block}{A few tools}
+    \begin{description}
+    \item[\href{http://git-scm.com/}{\beamergotobutton{git}}]
+      THE mainstream choice. Fast, light, easy to use
+    \item[\href{http://mercurial.selenic.com/}{\beamergotobutton{mercurial}}]
+      The alternative to git
+    \item[\href{http://bazaar.canonical.com/en/}{\beamergotobutton{Bazaar}}]
+      Another alternative
+    \item[\href{https://subversion.apache.org/}{\beamergotobutton{Subversion}}]
+      Historical, not distributed - don't use
+    \item[\href{https://cvs.nongnu.org/}{\beamergotobutton{CVS}}]
+      Archeological, not distributed - don't use
+    \end{description}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Git crash course}
+  \begin{minted}[gobble=4]{shell-session}
+    $ git init myProject
+    Initialized empty Git repository in myProject/.git/
+
+    $ vim file.cpp; vim file2.cpp
+    $ git add file.cpp file2.cpp
+    $ git commit -m "Committing first 2 files"
+    [master (root-commit) c481716] Committing first 2 files
+    ...
+
+    $ git log --oneline
+    d725f2e Better STL test
+    f24a6ce Reworked examples + added stl one
+    bb54d15 implemented template part
+    ...
+
+    $ git diff f24a6ce bb54d15
+  \end{minted}
+\end{frame}

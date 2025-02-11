@@ -1,0 +1,432 @@
+\subsection[except]{Exceptions}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Purpose}
+    \begin{itemize}
+      \item to handle \textit{exceptional} events that happen rarely
+      \item and cleanly jump to a place where the error can be handled
+    \end{itemize}
+  \end{block}
+  \begin{block}{In practice}
+    \begin{itemize}
+      \item add an exception handling block with \cppinline{try} ... \cppinline{catch}
+      \begin{itemize}
+        \item when exceptions are possible \textit{and can be handled}
+      \end{itemize}
+      \item throw an exception using \cppinline{throw}
+      \begin{itemize}
+        \item when a function cannot proceed or recover internally
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{fontsize=\small,gobble=2}
+      try {
+        process_data(f);
+      } catch (const
+        std::out_of_range& e) {
+        std::cerr << e.what();
+      }
+    \end{cppcode*}
+    \columnbreak
+    \begin{cppcode*}{fontsize=\small,firstnumber=7,gobble=2}
+      void process_data(file &f) {
+        ...
+        if (i >= buffer.size())
+          throw std::out_of_range{
+            "buf overflow"};
+      }
+    \end{cppcode*}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Throwing exceptions}
+    \begin{itemize}
+      \item objects of any type can be thrown (even e.g.\ \cppinline{int})
+    \end{itemize}
+  \end{block}
+  \begin{goodpractice}{Throwing exceptions}
+    \begin{itemize}
+      \item prefer throwing standard exception classes
+      \item throw objects by value
+    \end{itemize}
+  \end{goodpractice}
+  \small
+  \begin{cppcode}
+    #include <stdexcept>
+    void process_data(file& f) {
+      if (!f.open())
+        throw std::invalid_argument{"stream is not open"};
+      auto header = read_line(f); // may throw an IO error
+      if (!header.starts_with("BEGIN"))
+        throw std::runtime_error{"invalid file content"};
+      std::string body(f.size()); // may throw std::bad_alloc
+      ...
+    }
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Standard exceptions}
+    \begin{itemize}
+      \item \cppinline{std::exception}, defined in header \cppinline{<exception>}
+      \begin{itemize}
+        \item Base class of all standard exceptions
+        \item Get error message: \cppinline{virtual const char* what() const;}
+        \item Please derive your own exception classes from this one
+      \end{itemize}
+      \item From \cppinline{<stdexcept>}:
+      \begin{itemize}
+        \item \cppinline{std::runtime_error}, \cppinline{std::logic_error}, \cppinline{std::out_of_range}, \cppinline{std::invalid_argument}, ...
+        \item Store a string: \cppinline{throw std::runtime_error{"msg"}}
+        \item You should use these the most
+      \end{itemize}
+      \item \cppinline{std::bad_alloc}, defined in header \cppinline{<new>}
+      \begin{itemize}
+        \item Thrown by standard allocation functions (e.g.\ \cppinline{new})
+        \item Signals failure to allocate
+        \item Carries no message
+      \end{itemize}
+      \item ...
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Catching exceptions}
+    \begin{itemize}
+      \item a catch clause catches exceptions of the same or derived type
+      \item multiple catch clauses will be matched in order
+      \item if no catch clause matches, the exception propagates
+      \item if the exception is never caught, \cppinline{std::terminate} is called
+    \end{itemize}
+  \end{block}
+  \begin{cppcode}
+    try {
+      process_data(f);
+    } catch (const std::invalid_argument& e) {
+      bad_files.push_back(f);
+    } catch (const std::exception& e) {
+      std::cerr << "Failed to process file: " << e.what();
+    }
+  \end{cppcode}
+  \begin{goodpractice}{Catching exceptions}
+    \begin{itemize}
+      \item Catch exceptions by const reference
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Rethrowing exceptions}
+    \begin{itemize}
+      \item a caught exception can be rethrown inside the catch handler
+      \item useful when we want to act on an error, but cannot handle and want to propagate it
+    \end{itemize}
+  \end{block}
+  \begin{cppcode}
+    try {
+      process_data(f);
+    } catch (const std::bad_alloc& e) {
+      std::cerr << "Insufficient memory for " << f.name();
+      throw; // rethrow
+    }
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Catching everything}
+    \begin{itemize}
+    \item sometimes we need to catch all possible exceptions
+    \item e.g.\ in \cppinline{main}, a thread, a destructor, interfacing with C, \ldots
+    \end{itemize}
+  \end{block}
+  \begin{cppcode}
+
+    try {
+      callUnknownFramework();
+    } catch(const std::exception& e) {
+      // catches std::exception and all derived types
+      std::cerr << "Exception: " << e.what() << std::endl;
+    } catch(...) {
+      // catches everything else
+      std::cerr << "Unknown exception type" << std::endl;
+    }
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Stack unwinding}
+    \begin{itemize}
+      \item all objects on the stack between a \cppinline{throw} and the matching \cppinline{catch} are destructed automatically
+      \item this should cleanly release intermediate resources
+      \item make sure you are using the RAII idiom for your own classes
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{gobble=2}
+      class C { ... };
+      void f() {
+        C c1;
+        throw exception{};
+          // start unwinding
+        C c2; // not run
+      }
+      void g() {
+        C c3; f();
+      }
+    \end{cppcode*}
+    \columnbreak
+    \begin{cppcode*}{gobble=2,firstnumber=11}
+      int main() {
+        try {
+          C c4;
+          g();
+          cout << "done"; // not run
+        } catch(const exception&) {
+          // c1, c3 and c4 have been
+          // destructed
+        }
+      }
+    \end{cppcode*}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Exceptions}
+  \begin{goodpractice}{Exceptions}
+    \begin{itemize}
+      \item use exceptions for \textit{unlikely} runtime errors outside the program's control
+      \begin{itemize}
+        \item bad inputs, files unexpectedly not found, DB connection, \ldots
+      \end{itemize}
+      \item \textit{don't} use exceptions for logic errors in your code
+      \begin{itemize}
+        \item use \cppinline{assert} and tests
+      \end{itemize}
+      \item \textit{don't} use exceptions to provide alternative/skip return values
+      \begin{itemize}
+        \item you can use \cppinline{std::optional}, \cppinline{std::variant} or \cppinline{std::expected} (\cpp23)
+        \item avoid using the global C-style \cppinline{errno}
+      \end{itemize}
+      \item never throw in destructors
+      \item see also the \href{https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#S-errors}{\cpp core guidelines} and the \href{https://isocpp.org/wiki/faq/exceptions}{ISO \cpp FAQ}
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{A more illustrative example}
+    \begin{itemize}
+      \item exceptions are very powerful when there is much code between the error and where the error is handled
+      \item they can also rather cleanly handle different types of errors
+      \item \cppinline{try}/\cppinline{catch} statements can also be nested
+    \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{cppcode*}{fontsize=\scriptsize,gobble=2}
+      try {
+        for (File const &f : files) {
+          try {
+            process_file(f);
+          }
+          catch (bad_file const & e) {
+            ... // loop continues
+          }
+        }
+      } catch (bad_db const & e) {
+        ... // loop aborted
+      }
+    \end{cppcode*}
+    \columnbreak
+    \begin{cppcode*}{fontsize=\scriptsize,gobble=2}
+      void process_file(File const & file) {
+        ...
+        if (handle = open_file(file))
+          throw bad_file(file.status());
+        while (!handle) {
+          line = read_line(handle);
+          database.insert(line); // can throw
+                                 // bad_db
+        }
+      }
+    \end{cppcode*}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Cost}
+    \begin{itemize}
+      \item exceptions have little cost if no exception is thrown
+      \begin{itemize}
+        \item they are recommended to report \textit{exceptional} errors
+      \end{itemize}
+      \item for performance, when error raising and handling are close, or errors occur often, prefer error codes or a dedicated class
+      \item when in doubt about which error strategy is better, profile!
+   \end{itemize}
+  \end{block}
+  \begin{multicols}{2}
+    \begin{minipage}{5cm}
+      \begin{alertblock}{Avoid}
+        \begin{cppcode*}{fontsize=\scriptsize,gobble=6,linenos=false}
+          for (string const &num: nums) {
+            try {
+              int i = convert(num); // can
+                                    // throw
+              process(i);
+            } catch (not_an_int const &e) {
+              ... // log and continue
+            }
+          }
+        \end{cppcode*}
+      \end{alertblock}
+    \end{minipage}
+    \columnbreak
+    \begin{minipage}{5cm}
+      \begin{exampleblock}{Prefer}
+        \begin{cppcode*}{fontsize=\scriptsize,gobble=6,linenos=false}
+          for (string const &num: nums) {
+            optional<int> i = convert(num);
+            if (i) {
+              process(*i);
+            } else {
+              ... // log and continue
+            }
+          }
+        \end{cppcode*}
+      \end{exampleblock}
+    \end{minipage}
+  \end{multicols}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{noexcept specifier}
+  \begin{block}{\texttt{noexcept}}
+    \begin{itemize}
+      \item a function with the \cppinline{noexcept} specifier states that it guarantees to not throw an exception
+      \begin{cppcode*}{gobble=2,linenos=false}
+        int f() noexcept;
+      \end{cppcode*}
+      \begin{itemize}
+        \item either no exceptions is thrown or they are handled internally
+        \item checked at compile time
+        \item allows the compiler to optimize around that knowledge
+      \end{itemize}
+      \item a function with \cppinline{noexcept(expression)} is only \cppinline{noexcept} when \cppinline{expression} evaluates to \cppinline{true} at compile-time
+      \begin{cppcode*}{gobble=2,linenos=false}
+        int safe_if_8B() noexcept(sizeof(long)==8);
+      \end{cppcode*}
+    \end{itemize}
+  \end{block}
+  \begin{goodpractice}{\texttt{noexcept}}
+    \begin{itemize}
+      \item Use \cppinline{noexcept} on leaf functions where you know the behavior
+      \item C++11 destructors are \cppinline{noexcept} - never throw from them
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}
+
+\begin{advanced}
+\begin{frame}[fragile]
+  \frametitlecpp[11]{noexcept operator}
+  \begin{block}{}
+    \begin{itemize}
+      \item the \cppinline{noexcept(expression)} operator checks at compile-time whether an expression can throw exceptions
+      \item returns a \cppinline{bool}, which is \cppinline{true} if no exceptions can be thrown
+    \end{itemize}
+  \end{block}
+  \begin{block}{}
+    \begin{cppcode*}{gobble=2}
+      constexpr bool callCannotThrow = noexcept(f());
+      if constexpr (callCannotThrow) { ... }
+    \end{cppcode*}
+  \end{block}
+  \begin{block}{}
+    \begin{cppcode*}{gobble=2,firstnumber=3}
+      template <typename Function>
+      void g(Function f) noexcept(noexcept(f())) {
+        ...
+        f();
+      }
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Exceptions}
+  \begin{block}{Exception Safety Guarantees}
+    A function can offer the following guarantees:
+    \begin{itemize}
+      \item No guarantee
+      \begin{itemize}
+        \item An exception will lead to undefined program state
+      \end{itemize}
+      \item Basic exception safety guarantee
+      \begin{itemize}
+        \item An exception will leave the program in a defined state
+        \begin{itemize}
+          \item At least destructors must be able to run
+          \item This is similar to the moved-from state
+        \end{itemize}
+        \item No resources are leaked
+      \end{itemize}
+      \item Strong exception safety guarantee
+      \begin{itemize}
+        \item The operation either succeeds or has no effect
+        \item When an exception occurs, the original state must be restored
+        \item This is hard to do, possibly expensive, maybe impossible
+      \end{itemize}
+      \item No-throw guarantee
+      \begin{itemize}
+        \item The function never throws (e.g.\ is marked \cppinline{noexcept})
+        \item Errors are handled internally or lead to termination
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Exceptions}
+  \begin{block}{Alternatives to exceptions}
+    \begin{itemize}
+      \item The global variable \cppinline{errno} (avoid)
+      \item Return an error code (e.g.\ an \cppinline{int} or an \cppinline{enum})
+      \item Return a \cppinline{std::error_code} (\cpp11)
+      \item If failing to produce a value is not a hard error, consider returning \cppinline{std::optional<T>} (\cpp17)
+      \item Return \cppinline{std::expected<T, E>} (\cpp23), where \cppinline{T} is the return type on success and \cppinline{E} is the type on failure
+      \item Terminate the program
+        \begin{itemize}
+        \item e.g.\ by calling \cppinline{std::terminate()} or \cppinline{std::abort()}
+        \end{itemize}
+      \item Contracts: Specify function pre- and postconditions. Planned for \cpp20, but removed. Will come back in the future
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Further resources}
+  \begin{block}{}
+    \begin{itemize}
+      \item \href{https://isocpp.org/wiki/faq/exceptions}{Exceptions and Error Handling} - ISO C++ FAQ
+      \item \href{https://www.youtube.com/watch?v=0ojB8c0xUd8&t=1505s}{Back to Basics: Exceptions - Klaus Iglberger - CppCon 2020}
+      \item \href{https://www.youtube.com/watch?v=fOV7I-nmVXw}{The Unexceptional Exceptions - Fedor Pikus - CppCon 2015}
+      \item \href{https://www.youtube.com/watch?v=ZUH8p1EQswA}{The Dawn of a New Error, (C++ error-handling and exceptions) - Phil Nash - CppCon 2019} (alternatives)
+      \item \href{https://www.youtube.com/watch?v=mkkaAWNE-Ig}{Exceptions the Other Way Round - Sean Parent - CppNow 2022} (theoretical approach to errors)
+      \item \href{https://wg21.link/P0709}{P0709}: Zero-overhead deterministic exceptions: Throwing values - Herb Sutter (proposal - distant future)
+      \begin{itemize}
+        \item \href{https://www.youtube.com/watch?v=ARYP83yNAWk}{De-fragmenting C++: Making Exceptions and RTTI More Affordable and Usable - Herb Sutter CppCon 2019}
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+\end{advanced}

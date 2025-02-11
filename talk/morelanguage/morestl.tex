@@ -1,0 +1,483 @@
+\subsection[STD]{Standard library}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{\texttt{std::string\_view} \cpprefLink{https://en.cppreference.com/w/cpp/string/basic_string_view}}
+  \begin{block}{Non owning read-only view of a contiguous char sequence}
+    \begin{itemize}
+    \item Doesn't allocate memory
+    \item Similar interface to \cppinline{std::string}, but read-only
+    \item Easy to copy, faster for some calls eg. \texttt{substr} (O(1) vs O(n))
+    \item The data pointed to has to outlive the \cppinline{string_view}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Some example uses}
+    \begin{cppcode*}{}
+      constexpr std::string_view sv {"Some example"};
+      auto first = sv.substr(0, sv.find_first_of(" "));
+      std::string some_string {"foo bar"};
+      std::string_view sv_str(some_string);
+      char foo[3] = {'f','o','o'};
+      std::string_view carr(foo, std::size(foo));
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{\texttt{std::span<T>} - Concept \cpprefLink{https://en.cppreference.com/w/cpp/container/span}}
+  \begin{block}{Non owning view of a contiguous sequence of items}
+    \begin{itemize}
+    \item Doesn't allocate memory
+    \item Allows to modify items, but not the container itself
+      \begin{itemize}
+      \item no reallocation, push or pop
+      \end{itemize}
+    \item Provides container like interface
+      \begin{itemize}
+      \item iterators, \cppinline{size}, \cppinline{front}/\cppinline{back}, \cppinline{subspan}, ...
+      \end{itemize}
+    \item Standard contiguous containers convert to it automatically
+      \begin{itemize}
+      \item \cppinline{std::vector}, \cppinline{std::array}, C arrays, ...
+      \item not \cppinline{std::list} or \cppinline{std::deque} (no contiguous storage)
+      \item \cppinline{span} should thus be preferred as function argument
+      \end{itemize}
+    \item Simply a pair (pointer, size), so cheap to copy
+      \begin{itemize}
+      \item and thus to be passed by value
+      \end{itemize}
+    \item \cppinline{span} can also have a \texttt{static extent}
+      \begin{itemize}
+      \item meaning the size is determined at compile time
+      \item and thus only a pointer is stored by \cppinline{span}
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{\texttt{std::span<T>} - Usage}
+  \begin{exampleblockGB}{Some example}{https://godbolt.org/z/nP3jr388z}{\texttt{span}}
+    \scriptsize
+    \begin{cppcode*}{}
+      void print(std::span<const int> c) {
+        for (auto a : c) { std::cout << a << " "; }
+        std::cout << "\n";
+      }
+      void times2(std::span<int> c) {
+        for(auto &e : c) { e *= 2; }
+      }
+      int a[]{23, 45, 67, 89};
+      print(a);                 // 23 45 67 89
+
+      std::vector v{1, 2, 3, 4, 5};
+      std::span<const int> sv = v;
+      print(sv.subspan(2, 2));  // 3 4
+
+      std::array a2{-14, 55, 24};
+      times2(a2);
+      print(a2);                // -28 110 48
+
+      std::span<const int, 3> sa2 = a2;
+      std::cout << sizeof(sv) << " " << sizeof(sa2) << "\n";  // 16 8
+      std::span<const int, 3> s2a2 = a; // compilation failure, invalid conversion
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::optional \cpprefLink{https://en.cppreference.com/w/cpp/utility/optional}}
+  \begin{block}{Manages an optionally contained value}
+    \begin{itemize}
+    \item Contextually converts to bool, telling if it contains something
+    \item Has value semantics (Copy, Move, Compare, stack alloc.)
+    \item Useful for the return value of a function that may fail
+    \item Useful in place of pointers where value semantics are intuitive
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \small
+    \begin{cppcode*}{}
+      std::optional<Phone> parse_phone(std::string_view in) {
+        if (is_valid_phone(in))
+          return in; // equiv. to optional<Phone>{in};
+        return {};   // or: return std::nullopt; (empty opt.)
+      }
+      auto v = parse_phone(...);
+      if (v) {                    // or: v.has_value()
+        process_phone(v.value()); // or: *v (unchecked)
+        v->call(); // calls Phone::call()   (unchecked)
+      }
+      v.reset(); assert(!v.has_value()); // or: v = {};
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::optional}
+  \begin{exampleblock}{Code example}
+    \small
+    \begin{cppcode*}{}
+      // address may be given for a person or not
+      void processPerson(std::string_view name,
+                         std::optional<Address> address);
+      Address addr = wonderland();
+      processPerson("Alice", std::move(addr));
+
+      // Every person has a name, but not always an address
+      struct Person {
+        std::string name;
+        std::optional<Address> address;
+      };
+      std::vector<Person> ps = ...;
+      std::sort(ps.begin(), ps.end(),
+                [](const Person& a, const Person& b) {
+        return a.address < b.address;
+      }); // sorts by address, persons w/o address at front
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::optional}
+  \begin{exerciseWithShortcut}{Handling optional results}{std::optional}
+    \begin{itemize}
+      \item go to \texttt{exercises/optional/optional.cpp}
+      \item modify \texttt{mysqrt} so to return an \texttt{std::optional<double>}
+      \item guess the consequences on \texttt{square}
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[23]{std::expected \cpprefLink{https://en.cppreference.com/w/cpp/utility/expected}}
+  \begin{block}{Manages either of 2 values (expected or not)}
+    \begin{itemize}
+    \item templated by the 2 value types
+    \item Useful for the return value of a function that may fail
+      \begin{itemize}
+      \item and would then return another type (error type)
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblockGB}{Practically}{https://godbolt.org/z/9rjn1hzeW}{\texttt{expected}}
+    \small
+    \begin{cppcode*}{}
+      enum class Error {...};
+      std::expected<int, Error> parse(std::string_view in) {
+        if (is_valid(in)) return convert_to_int(in);
+        return std::unexpected(Error::...);
+      }
+      auto v = parse(...);
+      if (v) { // or v.has_value()
+        std::cout << *v; // (unchecked)
+        foo(v.value());  // may throw bad_expected_access
+      } else
+        log(v.error());
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::variant \cpprefLink{https://en.cppreference.com/w/cpp/utility/variant}}
+  \begin{block}{A type-safe union}
+    \begin{itemize}
+    \item Allows the variable to hold any of the given types
+    \item \cppinline{std::get} reads the value of the variant
+    \item and throws \cppinline{std::bad_variant_access} for bad accesses
+    \item Currently held alternative can be probed
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Code example}
+    \small
+    \begin{cppcode*}{}
+      std::variant<int, float, string> opt{100}; // holding int
+      int ival = std::get<int>(opt); // or std::get<0>(opt)
+      try {
+        float val = std::get<float>(opt) // will throw
+      } catch (std::bad_variant_access const& ex) {...}
+      if (std::holds_alternative<float>(opt))
+          std::cout << std::get<float>(opt);
+      if (const float* v = std::get_if<float>(&opt)) { ... }
+      const int current_alternative = opt.index(); // == 0
+    \end{cppcode*}
+  \end{exampleblock}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::variant and the visitor pattern}
+  \begin{block}{\texttt{std::visit} \cpprefLink{https://en.cppreference.com/w/cpp/utility/variant/visit}}
+    \begin{itemize}
+      \item Applies a ``visitor'' to a given variant
+      \begin{itemize}
+        \item A visitor is a callable able to handle all different types
+        \item Must return \cppinline{void} or the same type for all overloads
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblockGB}{Practically}{https://godbolt.org/z/bxzEsM3de}{\texttt{variant visitor}}
+    \small
+    \begin{cppcode*}{gobble=2}
+      struct Visitor {
+        auto operator()(int i)   {return "i:"+std::to_string(i);}
+        auto operator()(float f) {return "f:"+std::to_string(f);}
+        auto operator()(const std::string& s) { return "s:"+s;}
+        template <typename T>
+        auto operator()(const T& t) { return std::string{"?"}; }
+      };
+      void print(std::variant<int, float, std::string, char> v) {
+        std::cout << std::visit(Visitor{}, v) << '\n';
+      }
+      print(100); print(42.0f); print("example"); print('A');
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::variant and the lambda visitor pattern}
+  \begin{block}{Idea}
+    \begin{itemize}
+    \item use inheritance to group a set of lambdas
+    \end{itemize}
+  \end{block}
+  \begin{exampleblockGB}{Practically}{https://godbolt.org/z/WcdnT1hra}{\texttt{variant $\lambda$ visitor}}
+    \small
+    \begin{cppcode*}{gobble=2}
+      template<typename... Ts> // covered in expert part
+      struct Overload : Ts ... { using Ts::operator()...; };
+      template<typename... Ts>
+      Overload(Ts...) -> Overload<Ts...>; // obsolete in C++20
+      int main(){
+        std::variant<int, float, std::string, char> v{ ... };
+        auto overloadSet = Overload {
+          [](int i) { std::cout << "i32:" << i;},
+          [](std::string s) { std::cout << s;},
+          [](auto a) { std::cout << "other"; },
+        };
+        std::visit(overloadSet, v);
+      }
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::variant exercise}
+  \begin{exerciseWithShortcut}{An alternative to oo polymorphism}{std::variant}
+    \begin{itemize}
+      \item go to \texttt{exercises/variant/variant.cpp}
+      \item replace inheritance from a common base class with an \cppinline{std::variant} on the three kinds of particle.
+      \item two solutions given : with \cppinline{std::get_if} and with \cppinline{std::visit}.
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{std::any \cpprefLink{https://en.cppreference.com/w/cpp/utility/any}}
+  \begin{block}{a type-safe container for single values of any type}
+    \begin{itemize}
+    \item Allows a variable to hold any type (say bye to \cppinline{void*})
+    \item \cppinline{std::any_cast} reads the internal value
+    \item and throws \cppinline{std::bad_any_cast} for bad accesses
+    \item \cppinline{std::any_cast} only matches types 1:1, ignoring inheritance
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Code example}
+    \small
+    \begin{cppcode*}{}
+      std::any val{100};          // holding int
+      val = std::string("hello"); // holding string
+      std::string s = std::any_cast<std::string>(val);
+      try {
+        int val = std::any_cast<int>(val); // will throw
+      } catch (std::bad_any_cast const& ex) {...}
+      if (val.type() == typeid(int)) // requires RTTI
+        std::cout << std::any_cast<int>(val);
+      val.reset(); assert(!val.has_value());
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{non-member begin and end}
+  \begin{alertblock}{The problem in \cpp98}
+    STL containers and arrays have different syntax for loop
+    \vspace{-1mm}
+    \begin{cppcode*}{}
+      std::vector<int> v;
+      int a[] = {1,2,3};
+      for(auto it = v.begin(); it != v.end(); it++) {...}
+      for(int i = 0; i < 3; i++) {...}
+    \end{cppcode*}
+  \end{alertblock}
+  \pause
+  \begin{block}{A new syntax}
+    \begin{cppcode*}{firstnumber=5}
+      for(auto it = begin(v); it != end(v); it++) {...}
+      for(auto i = begin(a); i != end(a); i++) {...}
+    \end{cppcode*}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Allowing the best syntax}
+    \begin{cppcode*}{firstnumber=7}
+      for(auto & element : v) {...}
+      for(auto & element : a) {...}
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{\texttt{std::tuple} \cpprefLink{https://en.cppreference.com/w/cpp/utility/tuple}}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{}
+      #include <tuple>
+
+      std::tuple<int, float, bool> t{42, 3.14f, false};
+      auto t = std::make_tuple(42, 3.14f, false);
+      std::tuple t{42, 3.14f, false}; // C++17 CTAD
+
+      float& f = std::get<1>(t);   // get 1. member
+      bool& b = std::get<bool>(t); // get bool member
+
+      using Tup = decltype(t);
+      constexpr auto s = std::tuple_size_v<Tup>; // 3
+      using E2Type = std::tuple_element<2, Tup>; // bool
+
+      auto t2 = std::tuple_cat(t, std::tuple{'A'}, t);
+        // <int, float, bool, char, int, float, bool>
+      bool& b2 = std::get<bool>(t2); // error
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{\texttt{std::tuple}}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{}
+      void f(std::tuple<int, float, bool> tuple) {
+        int a; float b; bool c;
+        std::tie(a, b, c) // tuple<int&, float&, bool&>
+          = tuple;
+        // Use structured bindings in C++17
+      }
+
+      int& i = ...;
+      std::tuple{i};                // tuple<int>
+      std::make_tuple(i);           // tuple<int>
+      std::make_tuple(std::ref(i)); // tuple<int&>
+      std::tuple{std::ref(i)};
+        // C++17 CTAD, tuple<std::reference_wrapper<int>>
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Structured Binding Declarations}
+  \begin{block}{}
+    \begin{itemize}
+      \item Helps with \cppinline{std::tuple}, tuple-like, array or aggregate types
+      \item Automatically creates variables and ties them
+      \item CV qualifiers and references allowed
+    \end{itemize}
+  \end{block}
+  \begin{exampleblockGB}{Practically}{https://godbolt.org/z/PfWzxjP7W}{\texttt{Structured binding}}
+    \small
+    \begin{cppcode*}{}
+      std::tuple<int, double, long> tuple = ...;
+      auto [ a, b, c ] = tuple;
+
+      struct S { int i; float f; bool b; } s = ...;
+      auto&& [ a, b, c ] = std::move(s);
+
+      int arr[] = {1, 3, 4};
+      const auto& [ a, b, c ] = arr;
+
+      std::unordered_map<K, V> map = ...;
+      for (const auto& [key, value] : map) { ... }
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Structured Binding Declarations}
+  \begin{block}{``Tuple-like binding prototcol''}
+    \begin{itemize}
+      \item For non-aggregates, you can opt-in to structured bindings
+      \item The compiler requires these hooks:
+      \begin{itemize}
+        \item Specialize \cppinline{std::tuple_size}
+        \item Specialize \cppinline{std::tuple_element}
+        \item Provide either \cppinline{T::get<I>()} or \cppinline{get<I>(T)}
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \small
+    \begin{cppcode*}{gobble=2}
+      class C { ... }; // complex, cannot change
+      template <>
+      struct std::tuple_size<C> {
+        static constexpr std::size_t value = ...;
+      };
+      template <std::size_t I>
+      struct std::tuple_element<I, C> { using type = ...; };
+      template <std::size_t I>
+      auto& get(C& c) { ... }; // -> std::tuple_element<I, C>&
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\cpp date and time utilities \hfill \cpp11 / \cpp20}
+  \cppinline{std::chrono library} present in \cppinline{<chrono>} header
+  \begin{block}{Clocks}
+    \begin{itemize}
+    \item consists of a starting point (or epoch) and a tick rate
+      \begin{itemize}
+      \item E.g. January 1, 1970 and every second
+      \end{itemize}
+    \item C++ defines several clock type
+      \begin{itemize}
+      \item \href{https://en.cppreference.com/w/cpp/chrono/system_clock}{\color{blue!50!white} \cppinline{system_clock}} system time, aka wall clock time, or C time
+      \item \href{https://en.cppreference.com/w/cpp/chrono/steady_clock}{\color{blue!50!white} \cppinline{steady_clock}} monotonic but unrelated to wall clock time
+      \item \href{https://en.cppreference.com/w/cpp/chrono/high_resolution_clock}{\color{blue!50!white} \cppinline{high_resolution_clock}} clock with the smallest tick period
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{block}{\href{https://en.cppreference.com/w/cpp/chrono/time_point}{\color{blue!50!white} \cppinline{time_point}} and \href{https://en.cppreference.com/w/cpp/chrono/duration}{\color{blue!50!white} \cppinline{duration}}}
+    \begin{itemize}
+    \item provide easy manipulation of times and duration
+    \item clock dependent
+    \item \href{https://en.cppreference.com/w/cpp/chrono/duration/duration_cast}{\color{blue!50!white} \cppinline{duration_cast}} allows conversions between duration types
+      \begin{itemize}
+      \item available helper types : nanoseconds, microseconds, milliseconds, seconds, minutes, hours, ...
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Practical usage / timing some \cpp code}
+  \begin{exampleblockGB}{How to measure the time spent in some code}{https://godbolt.org/z/PzKWer5eb}{\texttt{timing}}
+    \small
+    \begin{cppcode*}{gobble=2}
+      #include <chrono>
+
+      std::chrono::high_resolution_clock clock;
+      auto start = clock::now();
+      ... // code to be timed
+      std::chrono::duration<float> ticks = clock.now() - start;
+
+      auto millis = std::chrono::duration_cast
+                    <std::chrono::milliseconds>(ticks);
+      std::cout << "it took " << ticks.count() << " ticks"
+                << ", that is " << millis.count() << " ms\n";
+    \end{cppcode*}
+  \end{exampleblockGB}
+  \pause
+  \begin{alertblock}{Warning}
+    \begin{itemize}
+    \item this does not measure the amount of CPU used !
+    \item neither the time spent on a CPU (think suspended threads)
+    \end{itemize}
+  \end{alertblock}
+\end{frame}

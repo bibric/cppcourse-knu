@@ -1,0 +1,218 @@
+\subsection[tmpl]{Variadic templates}
+
+%http://eli.thegreenplace.net/2014/variadic-templates-in-c/
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Basic variadic template}
+  \begin{block}{The idea}
+    \begin{itemize}
+    \item a parameter accepting arbitrarily many arguments (i.e.\ pack)
+    \item template parameter pack for e.g.\ types, function parameter packs for values, and expansions, details on \href{https://en.cppreference.com/w/cpp/language/parameter_pack}{cppreference}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Recursive example \cppinsightLink{https://cppinsights.io/s/1c9fa05f}}
+    \begin{cppcode*}{}
+      template<typename T>
+      T sum(T v) { return v; }
+
+      template<typename T,
+               typename... Args>     // temp. param. pack
+      T sum(T first, Args... args) { // func. param. pack
+        return first + sum(args...); // pack expansion
+      }
+      int s = sum(1, 2, 3, 8, 7);
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitlecpp[11]{A couple of remarks}
+  \begin{block}{About performance}
+    \begin{itemize}
+    \item do not be afraid of recursion
+    \item everything is at compile time!
+    \item unlike C-style variadic functions \\
+          e.g.\ \cppinline{printf(const char* fmt, ...);}
+    \end{itemize}
+  \end{block}
+  \begin{block}{Why it is better than variadic functions}
+    \begin{itemize}
+    \item it's more performant
+    \item type safety is included
+    \item it applies to everything, including user-defined types
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Parameter packs}
+  \begin{block}{Parameter packs}
+    \begin{itemize}
+      \item only a few operations are supported
+      \begin{itemize}
+        \item query the number of elements in a pack with \cppinline{sizeof...}
+        \item expand it with \cppinline{x...}
+      \end{itemize}
+      \item can be empty
+      \item can hold different types
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{}
+      template<typename... Args>
+      void f(Args... args) {
+        constexpr std::size_t N = sizeof...(Args);
+        std::tuple<Args...> t{args...};
+      }
+      f(0, 1, 2);       // Args = [int, int, int]
+      f();              // Args = empty
+      f(0, true, 3.14); // Args = [int, bool, double]
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Fold expressions}
+  \begin{block}{The idea}
+    \begin{itemize}
+      \item reduces a parameter pack over a binary operator
+      \item details on \href{https://en.cppreference.com/w/cpp/language/fold}{cppreference}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Example}
+    \begin{cppcode*}{}
+      template<typename... Args>
+      auto sum1(Args... args) {
+        return (args + ...);     // unary fold over +
+      }                          // parentheses mandatory
+      template<typename... Args>
+      auto sum2(Args... args) {
+        return (args + ... + 0); // binary fold over +
+      }                          // parentheses mandatory
+      int sum = sum1(); // error
+      int sum = sum2(); // ok
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Fold expressions}
+  \begin{exampleblock}{Example: call a function on all arguments - \cppinsightLink{https://cppinsights.io/s/23e7d474}}
+    \begin{cppcode*}{}
+      template<typename T>
+      void print(const T& t) {
+        std::cout << t;
+      }
+      template<typename... Ts>
+      void printAll(const Ts&... ts) {
+         (print(ts),...); // fold over comma operator
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+  \begin{alertblock}{\cpp11 workaround (don't use anymore)}
+    \begin{cppcode*}{}
+      template<typename... Ts>
+      void printAll(const Ts&... ts) {
+         int dummy[]{(print(ts),0)...};
+      }
+    \end{cppcode*}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Variadic class template}
+  \begin{exampleblockGB}{The tuple example, simplified}{https://godbolt.org/z/nxjja4bob}{\texttt{tuple} code}
+    \begin{cppcode*}{}
+      template <typename... Ts>
+      struct tuple {};
+
+      template <typename T, typename... Ts>
+      struct tuple<T, Ts...> : tuple<Ts...> {
+        tuple(T head, Ts... tail) :
+          tuple<Ts...>(tail...), m_head(head) {}
+        T m_head;
+      };
+
+      tuple<double, uint64_t, const char*>
+        t1(12.2, 42, "big");
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[14]{\texttt{std::integer\_sequence}}
+  \begin{block}{Packs of values}
+    \begin{itemize}
+      \item We can also have non-type template parameter packs
+      \item Useful to pass lists of compile-time constants around
+      \item The standard library includes a few helpers
+    \end{itemize}
+  \end{block}
+  \begin{block}{}
+    \begin{cppcode*}{}
+      template<typename T, T... Is>
+      struct integer_sequence { ... };
+
+      template<size_t... Is>
+      using index_sequence =
+        integer_sequence<std::size_t, Is...>;
+
+      template<size_t N>
+      using make_index_sequence =
+        index_sequence</*0, 1, ..., N-1*/>;
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[14]{\texttt{std::integer\_sequence}}
+  \begin{exampleblock}{Example - make\_from\_tuple with helper}
+    \begin{cppcode*}{}
+      template<typename T,
+        typename... Args, std::size_t... Is>
+      T helper(std::tuple<Args...> args,
+        std::index_sequence<Is...>) {
+        return T(std::get<Is>(args)...);
+      }
+      template<typename T, typename... Args>
+      T make_from_tuple(std::tuple<Args...> args) {
+         return helper<T>(args,
+           std::make_index_sequence<sizeof...(Args)>{});
+      }
+
+      struct S { S(int, float, bool) { ... } };
+      std::tuple t{42, 3.14, false};
+      S s = make_from_tuple<S>(t);
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{\texttt{std::integer\_sequence}}
+  \begin{exampleblock}{Example - make\_from\_tuple with lambda}
+    \begin{cppcode*}{}
+      template<typename T, typename... Args>
+      T make_from_tuple(std::tuple<Args...> args) {
+         return [&]<std::size_t... Is>(
+             std::index_sequence<Is...>){
+           return T(std::get<Is>(args)...);
+         }(std::make_index_sequence<sizeof...(Args)>{});
+      }
+
+      struct S { S(int, float, bool) { ... } };
+      std::tuple t{42, 3.14, false};
+      S s = make_from_tuple<S>(t);
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Variadic templates}
+  \begin{exerciseWithShortcut}{Variadic templates}{Variadic tpl}
+    \begin{itemize}
+    \item go to \texttt{exercises/variadic}
+    \item you will extend the \cppinline{tuple} from the last slides
+    \item follow the instructions in the source code
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}

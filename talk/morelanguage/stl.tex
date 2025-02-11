@@ -1,0 +1,407 @@
+\subsection[STL]{The STL}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{The Standard Template Library}
+  \begin{block}{What it is}
+    \begin{itemize}
+    \item A library of standard templates
+    \item Has almost everything you need
+      \begin{itemize}
+      \item strings, containers, iterators
+      \item algorithms, functions, sorters
+      \item functors, allocators
+      \item ...
+      \end{itemize}
+    \item Portable
+    \item Reusable
+    \item Efficient
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Use it}
+    and adapt it to your needs, thanks to templates
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[14]{STL in practice}
+  \begin{exampleblockGB}{STL example}{https://godbolt.org/z/n8ahEr5f6}{STL}
+    \begin{cppcode*}{gobble=2}
+      #include <vector>
+      #include <algorithm>
+      #include <functional>     // `import std;` in C++23
+      #include <iterator>
+      #include <iostream>
+
+      std::vector<int> in{5, 3, 4};    // initializer list
+      std::vector<int> out(3);  // constructor taking size
+      std::transform(in.begin(), in.end(),  // input range
+                     out.begin(),          // start result
+                     std::negate{});       // function obj
+      std::copy(out.begin(), out.end(),    // -5 -3 -4
+        std::ostream_iterator<int>{std::cout, " "});
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{STL's concepts}
+  \begin{block}{containers}
+    \small
+    \begin{itemize}
+    \setlength\itemsep{0em}
+    \setlength{\parskip}{0pt}
+    \setlength{\parsep}{0pt}
+    \item data structures for managing a range of elements, irrespective of:
+      \begin{itemize}
+      \setlength\itemsep{0em}
+      \setlength{\parskip}{0pt}
+      \setlength{\parsep}{0pt}
+      \item the data itself (templated)
+      \item the memory allocation of the structure (templated)
+      \item the algorithms that may use the structure (iterators)
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Examples ($\rightarrow$ \href{https://en.cppreference.com/w/cpp/string/basic_string}{\color{blue!50!white}{string}} and \href{https://en.cppreference.com/w/cpp/container}{\color{blue!50!white}{container library}} on cppreference)}
+    \small
+    \begin{itemize}
+      \setlength\itemsep{0em}
+      \item string, string\_view (\cpp17)
+      \item list, forward\_list (\cpp11), vector, deque, array (\cpp11)
+      \item {[}multi]map, [multi]set (\cpp23: flat\_[multi]map, flat\_[multi]set)
+      \item unordered\_[multi]map (\cpp11), unordered\_[multi]set (\cpp11)
+      \item stack, queue, priority\_queue
+      \item span (\cpp20)
+      \item non-containers: bitset, pair, tuple (\cpp11), optional (\cpp17), variant (\cpp17), any (\cpp17), expected (\cpp23)
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Containers: std::vector}
+  \begin{cppcode*}{}
+    #include <vector>
+    std::vector<T> v{5, 3, 4}; // 3 Ts, 5, 3, 4
+    std::vector<T> v(100);     // 100 default constr. Ts
+    std::vector<T> v(100, 42); // 100 Ts with value 42
+    std::vector<T> v2 = v;            // copy
+    std::vector<T> v2 = std::move(v); // move, v is empty
+
+    std::size_t s = v.size();
+    bool empty = v.empty();
+
+    v[2] = 17;         // write element 2
+    T& t = v[1000];    // access element 1000, bug!
+    T& t = v.at(1000); // throws std::out_of_range
+    T& f = v.front();  // access first element
+    v.back() = 0;      // write to last element
+    T* p = v.data();   // pointer to underlying storage
+  \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Containers: std::vector}
+  \begin{cppcode*}{}
+    std::vector<T> v = ...;
+    auto b = v.begin(); // iterator to first element
+    auto e = v.end();   // iterator to one past last element
+    // all following operations, except reserve, invalidate
+    // all iterators (b and e) and references to elements
+
+    v.resize(100); // size changes, grows: new T{}s appended
+                   //           shrinks: Ts at end destroyed
+    v.reserve(1000); // size remains, memory increased
+    for (T i = 0; i < 900; i++)
+      v.push_back(i); // add to the end
+    v.insert(v.begin()+3, T{}); // insert after 3rd position
+
+    v.pop_back();         // removes last element
+    v.erase(v.end() - 3); // removes 3rd-last element
+    v.clear();            // removes all elements
+  \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitlecpp[11]{Containers: \texttt{std::unordered\_map}}
+    \begin{block}{}
+        Conceptually a container of \cppinline{std::pair<Key const, Value>}
+    \end{block}
+    \begin{cppcode*}{gobble=4}
+        #include <unordered_map>
+        std::unordered_map<std::string, int> m;
+        m["hello"] = 1;  // inserts new key, def. constr. value
+        m["hello"] = 2;  // finds existing key
+        auto [it, isNewKey] = m.insert({"hello", 0}); // no effect
+        int val = m["world"];    // inserts new key (val == 0)
+        int val = m.at("monde"); // throws std::out_of_range
+
+        if (auto it = m.find("hello"); it != m.end()) // C++17
+            m.erase(it);      // remove by iterator (fast)
+        if (m.contains("hello")) // C++20
+            m.erase("hello"); // remove by key, 2. lookup, bad
+        for (auto const& [k, v] : m) // iterate k/v pairs (C++17)
+            std::cout << k << ": " << v << '\n';
+    \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+    \frametitlecpp[11]{\texttt{std::hash}}
+    \begin{block}{}
+        \begin{itemize}
+            \item The standard utility to create hash codes
+            \item Used by \cppinline{std::unordered_map} and others
+            \item Can be customized for your types via template specialization
+        \end{itemize}
+    \end{block}
+    \begin{cppcode*}{gobble=4}
+        #include <functional>
+        std::hash<std::string> h;
+        std::cout << h("hello"); // 2762169579135187400
+        std::cout << h("world"); // 8751027807033337960
+
+        class MyClass { int a, b; ... };
+        template<> struct std::hash<MyClass> {
+          std::size_t operator()(MyClass const& c) {
+            std::hash<int> h;
+            return h(c.a) ^ h(c.b); // xor to combine hashes
+          }
+        };
+    \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{STL's concepts}
+  \begin{block}{iterators}
+    \begin{itemize}
+    \item generalization of pointers
+    \item allow iteration over some data, irrespective of:
+      \begin{itemize}
+      \item the container used (templated)
+      \item the data itself (container is templated)
+      \item the consumer of the data (templated algorithm)
+      \end{itemize}
+    \item examples
+      \begin{itemize}
+        \item \cppinline{std::reverse_iterator}, \cppinline{std::back_insert_iterator}, ...
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblockGB}{Iterator example}{https://godbolt.org/z/jv1qTo5xz}{Iterator example}
+    \begin{cppcode*}{}
+      std::vector<int> const v = {1,2,3,4,5,6,7,8,9};
+      auto const end = v.rend() - 3; // arithmetic
+      for (auto it = v.rbegin();
+           it != end;     // compare positions
+           it += 2)       // jump 2 positions
+        std::cout << *it; // dereference, prints: 975
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{STL's concepts}
+  \begin{block}{algorithms}
+    \begin{itemize}
+    \item implementation of an algorithm working on data
+    \item with a well defined behavior (defined complexity)
+    \item irrespective of
+      \begin{itemize}
+      \item the data handled
+      \item the container where the data live
+      \item the iterator used to go through data (almost)
+      \end{itemize}
+    \item examples
+      \begin{itemize}
+      \item for\_each, find, find\_if, count, count\_if, search
+      \item copy, swap, transform, replace, fill, generate
+      \item remove, remove\_if
+      \item unique, reverse, rotate, shuffle, partition
+      \item sort, partial\_sort, merge, make\_heap, min, max
+      \item lexicographical\_compare, iota, reduce, partial\_sum
+      \end{itemize}
+    \item see also \href{https://www.youtube.com/watch?v=2olsGf6JIkU}{105 STL Algorithms in Less Than an Hour} and the \href{https://en.cppreference.com/w/cpp/algorithm}{algorithms library} on cppreference
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{STL's concepts}
+  \begin{block}{functors / function objects}
+    \begin{itemize}
+      \item generic utility functions
+      \item as structs with \cppinline{operator()}
+      \item mostly useful to be passed to STL algorithms
+    \item implemented independently of
+      \begin{itemize}
+      \item the data handled (templated)
+      \item the context (algorithm) calling it
+      \end{itemize}
+    \item examples
+      \begin{itemize}
+      \item plus, minus, multiplies, divides, modulus, negate
+      \item equal\_to, less, greater, less\_equal, ...
+      \item logical\_and, logical\_or, logical\_not
+      \item bit\_and, bit\_or, bit\_xor, bit\_not
+      \item identity, not\_fn
+      \item bind, bind\_front
+      \end{itemize}
+    \item see also documentation on \href{https://en.cppreference.com/w/cpp/utility/functional}{cppreference}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Functors / function objects}
+  \begin{block}{Example}
+    \begin{cppcode*}{}
+      struct Incrementer {
+        int m_inc;
+        Incrementer(int inc) : m_inc(inc) {}
+
+        int operator()(int value) const {
+          return value + m_inc;
+        }
+      };
+      std::vector<int> v{1, 2, 3};
+      const auto inc = 42;
+      std::transform(v.begin(), v.end(), v.begin(),
+                     Incrementer{inc});
+      \end{cppcode*}
+    \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Prefer lambdas over functors}
+  \begin{exampleblock}{With lambdas}
+    \begin{cppcode*}{}
+      std::vector<int> v{1, 2, 3};
+      const auto inc = 42;
+      std::transform(begin(v), end(v), begin(v),
+                     [inc](int value) {
+                       return value + inc;
+                     });
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \begin{goodpractice}[STL and lambdas]{Use STL algorithms with lambdas}
+    \begin{itemize}
+      \item Prefer lambdas over functors when using the STL
+      \item Avoid binders like \cppinline{std::bind2nd}, \cppinline{std::ptr_fun}, etc.
+    \end{itemize}
+  \end{goodpractice}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Range-based for loops with STL containers}
+  \begin{block}{Iterator-based loop (since \cpp98)}
+    \begin{cppcode*}{}
+      std::vector<int> v = ...;
+      int sum = 0;
+      for (std::vector<int>::iterator it = v.begin();
+           it != v.end(); it++)
+        sum += *it;
+    \end{cppcode*}
+  \end{block}
+  \pause
+  \begin{block}{Range-based for loop (since \cpp11)}
+    \begin{cppcode*}{firstnumber=6}
+      std::vector<int> v = ...;
+      int sum = 0;
+      for (auto a : v) { sum += a; }
+    \end{cppcode*}
+  \end{block}
+  \pause
+  \begin{exampleblock}{STL way (since \cpp98)}
+    \begin{cppcode*}{firstnumber=9}
+      std::vector<int> v = ...;
+      int sum = std::accumulate(v.begin(), v.end(), 0);
+      // std::reduce(v.begin(), v.end()); // C++17
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{More examples}
+  \begin{cppcode}
+    std::list<int> l = ...;
+
+    // Finds the first element in a list between 1 and 10.
+    const auto it = std::find_if(l.begin(), l.end(),
+        [](int i) { return i >= 1 && i <= 10; });
+    if (it != l.end()) {
+      int element = *it; ...
+    }
+
+    // Computes sin(x)/(x + DBL_MIN) for elements of a range.
+    std::vector<double> r(l.size());
+    std::transform(l.begin(), l.end(), r.begin(),
+      [](auto x) { return std::sin(x)/(x + DBL_MIN); });
+
+    // reduce/fold (using addition)
+    const auto sum = std::reduce(v.begin(), v.end());
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{More examples}
+  \begin{cppcode}
+    std::vector<int> v = ...;
+
+    // remove duplicates
+    std::sort(v.begin(), v.end());
+    auto newEndIt = std::unique(v.begin(), v.end());
+    v.erase(newEndIt, v.end());
+
+    // remove by predicate
+    auto p = [](int i) { return i > 42; };
+    auto newEndIt = std::remove_if(v.begin(), v.end(), p);
+    v.erase(newEndIt, v.end());
+
+    // remove by predicate (C++20)
+    std::erase_if(v, p);
+  \end{cppcode}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Welcome to lego programming!}
+  \begin{block}{}
+    \pgfdeclareimage[height=0.5cm]{AtlasLego}{morelanguage/AtlasLego.jpg}
+    \includegraphics[width=\linewidth]{morelanguage/AtlasLego}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Using the STL}
+  \begin{exercise}{STL}
+    \begin{itemize}
+    \item go to \texttt{exercises/stl}
+    \item look at the non STL code in randomize.nostl.cpp
+      \begin{itemize}
+        \item it creates a vector of ints at regular intervals
+        \item it randomizes them
+        \item it computes differences between consecutive ints
+        \item and the mean and variance of it
+      \end{itemize}
+    \item open randomize.cpp and complete the ``translation'' to STL
+    \item see how easy it is to reuse the code with complex numbers
+    \end{itemize}
+  \end{exercise}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[98]{Using the STL}
+  \begin{exampleblock}{Be brave and persistent!}
+    \begin{itemize}
+    \item you may find the STL quite difficult to use
+    \item template syntax is really tough
+    \item it is hard to get right, compilers spit out long error novels
+    \begin{itemize}
+      \item but, compilers are getting better with error messages
+    \end{itemize}
+    \item \cpp20 will help with concepts and ranges
+    \item the STL is extremely powerful and flexible
+    \item it will be worth your time!
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}

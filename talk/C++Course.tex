@@ -1,0 +1,294 @@
+\documentclass[compress]{beamer}
+\usetheme{Warsaw}
+\useoutertheme{split}
+
+\input{setup}
+
+% setup for the basic/advanced course switch
+% create a new latex if called basic (false by default)
+\newif\ifbasic
+
+% There are three ways to switch to the basic course:
+% 1. Uncomment the line below. Disadvantage: git diff won't be empty
+%\basictrue
+% 2. Tell it to the Makefile.
+%  2.1 Invoke "make essentials"
+%  2.2 export HEPCPP_ESSENTIALS=1
+%      make <target>
+\ifdefined\makebasic
+  \basictrue
+\fi
+% 3. Create a file named ./buildbasic
+\IfFileExists{./buildbasic}{\basictrue}
+
+% create a comment environment advanced. depending on the value of basic, we exclude or include it.
+\ifbasic
+  \excludecomment{advanced}
+\else
+  % advanced slides have a different structure color
+  \specialcomment{advanced}{
+    \setbeamercolor{structure}{fg=beamer@blendedblue!40!violet}
+    \isAdvancedSlidetrue
+  }{
+    \setbeamercolor{structure}{fg=beamer@blendedblue}
+    \isAdvancedSlidefalse
+  }
+\fi
+
+\newunicodechar{σ}{$\sigma$}
+\newunicodechar{µ}{$\mu$}
+
+\begin{document}
+
+\showboxdepth=\maxdimen
+\showboxbreadth=\maxdimen
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+  \frametitle{Foreword}
+  \begin{block}{What this course is not}
+    \begin{itemize}
+    \item It is not for absolute beginners
+    \item It is not for experts
+    \item It is not complete at all (would need 3 weeks...)
+      \begin{itemize}
+      \item although it is already too long for the time we have
+      \item \inserttotalframenumber{} slides, \insertpresentationendpage{} pages, \total{ex@counter} exercises...
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+  \begin{block}{How I see it}
+    \begin{description}
+    \item[Adaptative] pick what you want
+    \item[Interactive] tell me what to skip/insist on
+    \item[Practical] let's spend time on real code
+    \end{description}
+  \end{block}
+  \begin{block}{Where to find latest version ?}
+    \begin{itemize}
+    \item full sources at \href{https://github.com/hsf-training/cpluspluscourse}{github.com/hsf-training/cpluspluscourse}
+    \item latest pdf on
+    \ifbasic
+      \href{https://github.com/hsf-training/cpluspluscourse/raw/download/talk/C++Course\_essentials.pdf}{GitHub}
+    \else
+      \href{https://github.com/hsf-training/cpluspluscourse/raw/download/talk/C++Course\_full.pdf}{GitHub}
+    \fi
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{More courses}
+  \begin{block}{The HSF Software Training Center}
+    A set of course modules on more software engineering aspects prepared from within the HEP community
+    \begin{itemize}
+      \item Unix shell
+      \item Python
+      \item Version control (git, gitlab, github)
+      \item ...
+    \end{itemize}
+    {\small \url{https://hepsoftwarefoundation.org/training/curriculum.html}}
+  \end{block}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Outline}
+  \begin{multicols}{2}
+    \tableofcontents[sectionstyle=show,subsectionstyle=hide]
+  \end{multicols}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Detailed outline}
+  %\vspace{-0.5cm}
+  \begin{tiny}
+    \begin{multicols}{3}
+      \tableofcontents[sectionstyle=show,subsectionstyle=show]
+    \end{multicols}
+  \end{tiny}
+\end{frame}
+
+\section[Intro]{History and goals}
+\input{introduction/history}
+\input{introduction/goals}
+
+\section[base]{Language basics}
+\input{basicconcepts/coresyntax}
+\input{basicconcepts/arrayspointers}
+\input{basicconcepts/scopesnamespaces}
+\input{basicconcepts/classenum}
+\input{basicconcepts/references}
+\input{basicconcepts/functions}
+\input{basicconcepts/operators}
+\input{basicconcepts/control}
+\input{basicconcepts/headersinterfaces}
+\input{basicconcepts/auto}
+\begin{advanced}
+  \input{basicconcepts/inline}
+  \input{basicconcepts/assert}
+\end{advanced}
+
+\section[OO]{Object orientation (OO)}
+\input{objectorientation/objectsclasses}
+\input{objectorientation/inheritance}
+\input{objectorientation/constructors}
+\input{objectorientation/static}
+\input{objectorientation/allocations}
+\input{objectorientation/advancedoo}
+\begin{advanced}
+  \input{objectorientation/typecasting}
+\end{advanced}
+\input{objectorientation/operators}
+\input{objectorientation/functors}
+\begin{advanced}
+  \input{objectorientation/adl}
+\end{advanced}
+
+\section[Core]{Core modern \cpp}
+\input{morelanguage/constness}
+\begin{advanced}
+  \input{morelanguage/constexpr}
+\end{advanced}
+\input{morelanguage/exceptions}
+\begin{advanced}
+  \input{morelanguage/move}
+  \input{morelanguage/copyelision}
+\end{advanced}
+\input{morelanguage/templates}
+\input{morelanguage/lambda}
+\input{morelanguage/stl}
+\begin{advanced}
+  \input{morelanguage/morestl}
+  \input{morelanguage/random}
+  \input{morelanguage/ranges}
+\end{advanced}
+\input{morelanguage/raii}
+\begin{advanced}
+  \input{morelanguage/initialization}
+\end{advanced}
+
+\begin{advanced}
+  \section[exp]{Expert \cpp}
+  \input{expert/cpp20spaceship}
+  \input{expert/variadictemplate}
+  \input{expert/perfectforwarding}
+  \input{expert/sfinae}
+  \input{expert/cpp20concepts}
+  \input{expert/modules}
+  \input{expert/coroutines}
+\end{advanced}
+
+\section[Tool]{Useful tools}
+\input{tools/editors}
+\input{tools/vcs}
+\input{tools/formatting}
+\input{tools/compiling}
+\input{tools/webtools}
+\input{tools/debugging}
+\begin{advanced}
+  \input{tools/sanitizers}
+  \input{tools/valgrind}
+  \input{tools/staticanalysis}
+  \input{tools/profiling}
+  \input{tools/doxygen}
+
+  \section[conc]{Concurrency}
+  \input{concurrency/threadsasync}
+  \input{concurrency/mutexes}
+  \input{concurrency/atomic}
+  \input{concurrency/threadlocal}
+  \input{concurrency/condition}
+
+  \section[py]{\cpp and python}
+  \input{python/modulewriting}
+  \input{python/marryingcandcpp}
+  \input{python/ctypes}
+  \input{python/cppyy}
+\end{advanced}
+
+\begin{frame}
+  \frametitle{This is the end}
+  \begin{center}
+    \Huge Questions ?\\
+    \vspace{.5cm}
+    \tiny \url{https://github.com/hsf-training/cpluspluscourse/raw/download/talk/C++Course\_full.pdf}\\
+    \tiny \url{https://github.com/hsf-training/cpluspluscourse}
+  \end{center}
+\end{frame}
+
+\appendix
+
+\section*{Index}
+
+\begin{frame}
+  \frametitle{Index of Good Practices}
+  \listofgoodpractices
+\end{frame}
+
+\begin{frame}
+  \frametitle{Index of Exercises}
+  \listofexercises
+\end{frame}
+
+\begin{frame}
+  \frametitle{Index of Godbolt code examples}
+  \listofgodbolt
+\end{frame}
+
+\section*{External Resources and Further Reading}
+
+\begin{frame}
+  \frametitle{Books}
+  \begin{thebibliography}{10}
+    \scriptsize
+    \beamertemplatebookbibitems
+
+    \bibitem{} A Tour of C++, Third Edition
+    \newblock  Bjarne Stroustrup, Addison-Wesley, Sep 2022
+    \newblock  ISBN-13: \href{https://learning.oreilly.com/library/view/a-tour-of/9780136823575/}{978-0136816485}
+
+    \bibitem{} Effective Modern C++
+    \newblock  Scott Meyers, O'Reilly Media, Nov 2014
+    \newblock  ISBN-13: \href{https://learning.oreilly.com/library/view/effective-modern-c/9781491908419/}{978-1-491-90399-5}
+
+    \bibitem{} C++ Templates - The Complete Guide, 2nd Edition
+    \newblock  David Vandevoorde, Nicolai M. Josuttis, and Douglas Gregor
+    \newblock  ISBN-13: \href{https://learning.oreilly.com/library/view/c-templates-the/9780134778808/}{978-0-321-71412-1}
+
+    \bibitem{} C++ Best Practices, 2nd Edition
+    \newblock  Jason Turner
+    \newblock  \url{https://leanpub.com/cppbestpractices}
+
+    \bibitem{} Clean Architecture
+    \newblock  Robert C. Martin, Pearson, Sep 2017
+    \newblock  ISBN-13: \href{https://learning.oreilly.com/library/view/clean-architecture-a/9780134494272/}{978-0-13-449416-6}
+
+    \bibitem{} The Art of UNIX Programming
+    \newblock  Eric S. Raymond, Addison-Wesley, Sep 2002
+    \newblock  ISBN-13: \href{https://learning.oreilly.com/library/view/the-art-of/0131429019/}{978-0131429017}
+
+    \bibitem{} Introduction to Algorithms, 4th Edition
+    \newblock  T. H. Cormen, C. E. Leiserson, R. L. Rivest, C. Stein, Apr 2022
+    \newblock  ISBN-13: \href{https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/}{978-0262046305}
+  \end{thebibliography}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Conferences}
+  \begin{itemize}
+    \item CppCon --- \href{https://cppcon.org/}{cppcon.org} --- \youtubeuser{CppCon}
+    \item \cpp Now --- \href{https://cppnow.org/}{cppnow.org} --- \youtubeuser{BoostCon}
+    \item Code::Dive --- \href{https://codedive.pl/}{codedive.pl} --- \youtubechannel{codediveconference}
+    \item ACCU Conference --- \href{https://accu.org/}{accu.org}  --- \youtubechannel{ACCUConf}
+    \item Meeting \cpp\ --- \href{https://meetingcpp.com/}{meetingcpp.com} --- \youtubechannel{MeetingCPP}
+    \item See link below for more information
+          \url{https://isocpp.org/wiki/faq/conferences-worldwide}
+  \end{itemize}
+\end{frame}
+
+\end{document}

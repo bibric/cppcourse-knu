@@ -1,0 +1,249 @@
+\subsection[mutex]{Mutexes}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Races}
+  \begin{exampleblockGB}{Example code}{https://godbolt.org/z/oGz61Pn19}{Race}
+    \begin{cppcode*}{}
+      int a = 0;
+      void inc() { a++; };
+      void inc100() {
+        for (int i=0; i < 100; i++) inc();
+      };
+      int main() {
+        std::thread t1{inc100};
+        std::thread t2{inc100};
+        for (auto t: {&t1,&t2}) t->join();
+        std::cout << a << "\n";
+      }
+    \end{cppcode*}
+  \end{exampleblockGB}
+  \pause
+  \begin{block}{What do you expect? (Exercise exercises/race)}
+    \pause
+    Anything between 100 and 200 !!!
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Atomicity}
+  \begin{exampleblock}{Definition (wikipedia)}
+    \begin{itemize}
+    \item an operation (or set of operations) is atomic if it appears to the rest of the system to occur instantaneously
+    \end{itemize}
+  \end{exampleblock}
+  \begin{block}{Practically}
+    \begin{itemize}
+    \item an operation that won't be interrupted by other concurrent operations
+    \item an operation that will have a stable environment during execution
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{alertblock}{Is \texttt{++} operator atomic ?}
+    \pause
+    Usually not. It behaves like :
+    \begin{cppcode*}{}
+      eax = a       // memory to register copy
+      increase eax  // increase (atomic CPU instruction)
+      a = eax       // copy back to memory
+    \end{cppcode*}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Timing}
+  \begin{exampleblock}{Code}
+    \begin{cppcode*}{}
+      eax = a       // memory to register copy
+      increase eax  // increase (atomic CPU instruction)
+      a = eax       // copy back to memory
+    \end{cppcode*}
+  \end{exampleblock}
+  \begin{block}{For 2 threads}
+    \begin{tikzpicture}
+      \begin{umlseqdiag}
+        \umlobject[x=0, class=eax]{Thread 1}
+        \umlobject[x=3, class=a, fill=blue!20]{Memory}
+        \umlobject[x=6, class=eax]{Thread 2}
+        \begin{umlcall}[op=read, type=synchron, return=0]{Thread 1}{Memory}
+        \end{umlcall}
+        \begin{umlcall}[padding=3, op=read, type=synchron, return=0]{Thread 2}{Memory}
+        \end{umlcall}
+        \begin{umlcallself}[op=incr, type=synchron]{Thread 1}
+        \end{umlcallself}
+        \begin{umlcallself}[op=incr, type=synchron]{Thread 2}
+        \end{umlcallself}
+        \begin{umlcall}[op=write 1]{Thread 2}{Memory}
+        \end{umlcall}
+        \begin{umlcall}[padding=3, op=write 1]{Thread 1}{Memory}
+        \end{umlcall}
+      \end{umlseqdiag}
+      \draw[-triangle 60](8.5,0) -- (8.5,-4) node[right, pos=0.5]{time};
+    \end{tikzpicture}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Mutexes and Locks}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item Use locks to serialize access to a non-atomic piece of code
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{block}{The objects}
+    \begin{description}[labelwidth=1.8cm]
+    \item[std::mutex] in the \cppinline{mutex} header. \textbf{Mut}ual \textbf{ex}clusion
+    \item[std::scoped\_lock] RAII to lock and unlock automatically
+    \item[std::unique\_lock] same, but can be released/relocked explicitly
+    \end{description}
+  \end{block}
+  \pause
+  \begin{exampleblockGB}{Practically}{https://godbolt.org/z/a5TaaPrad}{\texttt{mutex}}
+    \begin{cppcode*}{}
+      int a = 0;
+      std::mutex m;
+      void inc() {
+        std::scoped_lock lock{m};
+        a++;
+      }
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Mutexes and Locks}
+  \begin{goodpractice}{Locking}
+    \begin{itemize}
+    \item Generally, use \cppinline{std::scoped_lock}
+      \begin{itemize}
+      \item Before \cpp17 use \cppinline{std::lock_guard}.
+      \end{itemize}
+    \item Hold as short as possible
+      \begin{itemize}
+      \item Consider wrapping critical section in block statement \cppinline|{ }|
+      \end{itemize}
+    \item Only if manual control needed, use \cppinline{std::unique_lock}
+    \end{itemize}
+  \end{goodpractice}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{gobble=2}
+      void function(...) {
+        // uncritical work ...
+        {
+          std::scoped_lock myLocks{mutex1, mutex2, ...};
+          // critical section
+        }
+        // uncritical work ...
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Mutexes and Locks}
+  \begin{exerciseWithShortcut}{Mutexes and Locks}{Mutexes/Locks}
+    \begin{itemize}
+    \item Go to \texttt{exercises/race}
+    \item Look at the code and try it\\
+      See that it has a race condition
+    \item Use a mutex to fix the issue
+    \item See the difference in execution time
+    \end{itemize}
+  \end{exerciseWithShortcut}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Dead locks}
+  \begin{block}{Scenario}
+    \begin{itemize}
+    \item 2 mutexes, 2 threads
+    \item locking order different in the 2 threads
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{block}{Sequence diagram}
+    \begin{tikzpicture}
+      \begin{umlseqdiag}
+        \umlobject[x=0]{Thread 1}
+        \umlobject[x=2.5, fill=blue!20]{Mutex A}
+        \umlobject[x=5, fill=blue!20]{Mutex B}
+        \umlobject[x=7.5]{Thread 2}
+        \begin{umlcall}[op=lock]{Thread 1}{Mutex A}
+        \end{umlcall}
+        \begin{umlcall}[op=lock, dt=6]{Thread 2}{Mutex B}
+        \end{umlcall}
+        \begin{umlcall}[op=lock (block), dt=6]{Thread 1}{Mutex B}
+        \end{umlcall}
+        \begin{umlcall}[op=lock (block), dt=12]{Thread 2}{Mutex A}
+        \end{umlcall}
+      \end{umlseqdiag}
+      \draw[-triangle 60](9,0) -- (9,-4) node[right, pos=0.5]{time};
+    \end{tikzpicture}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{How to avoid dead locks}
+  \begin{block}{Possible solutions}
+    \begin{itemize}
+    \item \cpp17: \cppinline{std::scoped_lock lock{m1, m2};} comes with deadlock-avoidance algorithm
+    \item Never take several locks
+      \begin{itemize}
+      \item Or add master lock protecting the locking phase
+      \end{itemize}
+    \item Respect a strict locking order across all threads
+    \item Do not use locks
+      \begin{itemize}
+      \item Use other techniques, e.g.\ lock-free queues
+      \end{itemize}
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Shared mutex / locks}
+  \begin{block}{Sharing a mutex}
+    \begin{itemize}
+      \item Normal \cppinline{std::mutex} objects cannot be shared
+      \item \cppinline{std::shared_mutex} to the rescue, but can be slower
+      \item It locks \emph{either} in exclusive \emph{or} in shared mode; never both
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{gobble=2}
+      Data data; std::shared_mutex mutex;
+      auto reader = [&](){
+        std::shared_lock lock{mutex};
+        read(data); // Many can read
+      };
+      std::thread r1{reader}, r2{reader}, ...;
+
+      std::thread writer([&](){
+        std::scoped_lock lock{mutex}; // exclusive
+        modify(data); // Only one can write
+      });
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{Synchronised \texttt{cout}}
+  \begin{block}{Parallel writing to streams}
+    \begin{itemize}
+      \item Parallel writes to streams become garbled when not synchronised
+      \item \cppinline{std::osyncstream} wraps and synchronises output to streams
+      \item Multiple instances of the osyncstream synchronise globally
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{}
+    \begin{cppcode*}{gobble=2}
+      void worker(const int id, std::ostream & os);
+      void func() {
+        std::osyncstream synccout1{std::cout};
+        std::osyncstream synccout2{std::cout};
+        std::jthread t1{worker, 0, std::ref(synccout1)};
+        std::jthread t2{worker, 1, std::ref(synccout2)};
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}

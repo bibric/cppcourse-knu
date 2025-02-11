@@ -1,0 +1,176 @@
+\subsection[thr]{Threads and async}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Basic concurrency}
+  \begin{block}{Threading}
+    \begin{itemize}
+    \item \cpp11 added \cppinline{std::thread} in \cppinline{<thread>} header
+    \item takes a function as argument of its constructor
+    \item must be detached or joined before the main thread terminates
+    \end{itemize}
+  \end{block}
+
+  \begin{exampleblock}{Example code}
+    \begin{cppcode*}{gobble=2}
+      void foo() {...}
+      void bar() {...}
+      int main() {
+        std::thread t1{foo};
+        std::thread t2{bar};
+        for (auto t: {&t1,&t2}) t->join();
+        return 0;
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{The thread constructor}
+  \begin{exampleblock}{Can take a function and its arguments}
+    \begin{cppcode*}{}
+      void function(int j, double j) {...}
+      std::thread t1{function, 1, 2.0};
+    \end{cppcode*}
+  \end{exampleblock}
+  \pause
+  \begin{exampleblock}{Can take any function-like object}
+    \begin{cppcode*}{}
+      struct AdderFunctor {
+        AdderFunctor(int i): m_i(i) {}
+        int operator() (int j) const { return m_i+j; }
+        int m_i;
+      };
+      std::thread t2{AdderFunctor{2}, 5};
+      int a;
+      std::thread t3{[](int i) { return i+2; }, a};
+      std::thread t4{[a]       { return a+2; }};
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{\texttt{std::jthread}}
+  \begin{goodpractice}[jthread vs.\ thread]{Prefer \cppinline{std::jthread} if \cpp20 is available}
+    \begin{itemize}
+    \item In \cppinline{<thread>} header since \cpp20
+    \item Automatically joins on destruction
+    \item Can be stopped from outside
+    \end{itemize}
+  \end{goodpractice}
+
+  \begin{exampleblock}{Example with jthread}
+    \begin{cppcode*}{gobble=2}
+      void foo() {...}
+      void bar() {...}
+      int main() {
+        std::jthread t1{foo};
+        std::jthread t2{bar};
+        // No join required
+        return 0;
+      }
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{Using jthread's stop\_token}
+  \begin{block}{}
+    \begin{itemize}
+      \item Like \cppinline{std::thread}, \cppinline{jthread} can take a function or functors/lambdas and their arguments
+      \item New: Can take functions that handle \cppinline{stop_token}s
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{stop\_token in a function}
+    \begin{cppcode*}{}
+    void function(std::stop_token st, int j) {
+      while (!st.stop_requested()) {
+        // ...
+    }}
+    std::jthread t1{function, 1};
+    t1.request_stop();
+    \end{cppcode*}
+  \end{exampleblock}
+  \begin{exampleblock}{A lambda with a stop\_token}
+    \begin{cppcode*}{}
+    std::jthread t1{
+      [](std::stop_token st, int i){ ... }, 1};
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Basic asynchronicity}
+  \begin{block}{Concept}
+    \begin{itemize}
+    \item separation of the specification of what should be done and the retrieval of the results
+    \item ``start working on this, and let me check if it's done''
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{block}{Practically}
+    \begin{itemize}
+    \item \cppinline{std::async} function launches an asynchronous task
+    \item \cppinline{std::future<T>} allows to retrieve the result
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Example code}
+    \begin{cppcode*}{}
+      int f() {...}
+      std::future<int> res = std::async(f);
+      std::cout << res.get() << "\n";
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Mixing the two}
+  \begin{block}{Is async running concurrently ?}
+    \begin{itemize}
+    \item it depends!
+    \item you can control this with a launch policy argument
+      \begin{description}
+      \item[std::launch::async] start executing immediately on a separate thread (may be a new thread, a thread pool, ...)
+      \item[std::launch::deferred] causes lazy execution in current thread
+      \end{description}
+      \begin{itemize}
+      \item execution starts when \cppinline{get()} is called on the returned future
+      \end{itemize}
+    \item default is not specified, but tries to use existing concurrency!
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblockGB}{Usage}{https://godbolt.org/z/oMGz5jhMr}{\texttt{std::async}}
+    \begin{cppcode*}{}
+      int f() {...}
+      auto res1 = std::async(std::launch::async, f);
+      auto res2 = std::async(std::launch::deferred, f);
+    \end{cppcode*}
+  \end{exampleblockGB}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Fine-grained control on asynchronous execution}
+  \begin{block}{\texttt{std::packaged\_task} template}
+    \begin{itemize}
+    \item creates an asynchronous version of any function-like object
+      \begin{itemize}
+      \item identical arguments
+      \item returns a \cppinline{std::future}
+      \end{itemize}
+    \item provides access to the returned future
+    \item associated with threads, gives full control on execution
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Usage}
+    \begin{cppcode*}{}
+      int f() { return 42; }
+      std::packaged_task<int()> task{f};
+      auto future = task.get_future();
+      task();
+      std::cout << future.get() << std::endl;
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}

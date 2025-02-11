@@ -1,0 +1,195 @@
+\subsection[cstexpr]{Constant Expressions}
+
+\begin{frame}[fragile]
+  \frametitlecpp[14]{Generalized Constant Expressions}
+  \begin{block}{Reason of being}
+    \begin{itemize}
+    \item use functions to compute constant expressions at compile time
+    \end{itemize}
+  \end{block}
+  \pause
+  \begin{exampleblock}{Example}
+    \begin{cppcode*}{}
+      constexpr int f(int x) {
+        if (x > 1) return x * f(x - 1);
+        return 1;
+      }
+      constexpr int a = f(5); // computed at compile-time
+      int b = f(5); // maybe computed at compile-time
+      int n = ...;  // runtime value
+      int c = f(n); // computed at runtime
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[14]{Generalized Constant Expressions(2)}
+  \begin{block}{Notes}
+    \begin{itemize}
+    \item A \cppinline{constexpr} function \emph{may} be executed at compile time.
+    \begin{itemize}
+      \item Arguments must be \cppinline{constexpr} or literals in order to allow compile time evaluation
+      \item Function body must be visible to the compiler
+    \end{itemize}
+    \item A \cppinline{constexpr} function can also be used at runtime
+    \item A \cppinline{constexpr} variable must be initialized at compile time
+    \item Classes can have \cppinline{constexpr} member functions
+    \item Objects used in constant expressions must be of \emph{literal type}:
+      \begin{itemize}
+      \item integral, floating-point, enum, reference, pointer type
+      \item union (of at least one) or array of literal types
+      \item class type with a \cppinline{constexpr} constructor and
+            the destructor is trivial (or \cppinline{constexpr} since C++20)
+      \end{itemize}
+    \item A constexpr function is implicitly \cppinline{inline} (header files)
+    \end{itemize}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile,shrink=15]
+  \frametitlecpp[11]{Limitations of constexpr functions}
+   \begin{block}{C++11}
+     \begin{itemize}
+     \item Non-virtual function with a single return statement
+     \end{itemize}
+   \end{block}
+   \begin{block}{C++14/C++17}
+    \begin{itemize}
+    \item no try-catch, goto or asm statements
+    \item no uninitialized/static/thread\_local/non-literal-type variables
+    \end{itemize}
+  \end{block}
+   \begin{block}{C++20}
+    \begin{itemize}
+    \item no coroutines or static/thread\_local/non-literal-type variables
+    \item throw and asm statements allowed, but may not be executed
+    \item transient memory allocation
+          (memory allocated at compile-time must be freed again at compile-time)
+    \item virtual functions and uninitialized variables allowed
+    \end{itemize}
+  \end{block}
+  \begin{block}{C++23}
+    \begin{itemize}
+    \item no coroutines, or execution of throw and asm statements
+    \item transient memory allocation
+    \item everything else allowed
+    \end{itemize}
+  \end{block}
+  Further details on \href{https://en.cppreference.com/w/cpp/language/constexpr}{cppreference}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Real life example}
+  \begin{cppcode*}{}
+    constexpr float toSI(float v, char unit) {
+      switch (unit) {
+      case 'k': return 1000.0f*v;
+      case 'm': return 0.001f*v;
+      case 'y': return 0.9144f*v;
+      case 'i': return 0.0254f*v;
+      ...
+      default: return v;
+      }
+    }
+    constexpr float fromSI(float v, char unit) {
+      switch (unit) {
+        case 'k': return 0.001f*v;
+        case 'y': return 1.093f*v;
+      ...
+      }
+    }
+  \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[11]{Real life example(2)}
+  \begin{cppcode*}{}
+    class DimLength {
+      float m_value;
+    public:
+      constexpr DimLength(float v, char unit):
+        m_value(toSI(v, unit)) {
+      }
+      constexpr float get(char unit) const {
+        return fromSI(m_value, unit);
+      }
+    };
+    constexpr DimLength km(1, 'k');
+    constexpr float km_y = km.get('y');
+    constexpr float km_i = km.get('i');
+    static_assert(km_y == 1093, "expected km == 1093 yards!");
+  \end{cppcode*}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{compile-time branches}
+  \begin{block}{{\it if constexpr}}
+    \begin{itemize}
+    \item takes a \cppinline{constexpr} expression as condition
+    \item evaluates at compile time
+    \item key benefit: the discarded branch can contain invalid code
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Example code}
+    \small
+    \begin{cppcode*}{}
+      template <typename T>
+      auto remove_ptr(T t) {
+        if constexpr (std::is_pointer_v<T>) {
+          return *t;
+        } else {
+          return t;
+        }
+      }
+      int i = ...; int *j = ...;
+      int r = remove_ptr(i);  // equivalent to i
+      int q = remove_ptr(j);  // equivalent to *j
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{Immediate functions}
+  \begin{block}{Motivation}
+    \begin{itemize}
+    \item Force a function to be executed at compile-time
+    \item Runtime evaluation is forbidden
+    \item Same restrictions as \cppinline{constexpr} functions
+    \item New keyword: \cppinline{consteval}
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Example}
+    \begin{cppcode*}{}
+      consteval int f(int x) {
+        if (x > 1) return x * f(x - 1);
+        return 1;
+      }
+      constexpr int a = f(5); // computed at compile-time
+      int b = f(5); // computed at compile-time
+      int n = ...;  // runtime value
+      int c = f(n); // compilation error
+    \end{cppcode*}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[20]{constinit}
+  \begin{block}{Motivation}
+    \begin{itemize}
+    \item Like a \cppinline{constexpr} variable, a \cppinline{constinit} variable guarantees compile-time initialization, but can be modified afterwards
+    \item Only allowed for \cppinline{static}/global and \cppinline{thread_local} variables
+    \item Initializer must be a constant expression, but \cppinline{constexpr} destruction is not required
+    \end{itemize}
+  \end{block}
+  \begin{exampleblock}{Example}
+    \begin{cppcode}
+      constexpr int f(int x) {
+        if (x > 1) return x * f(x - 1);
+        return 1;
+      }
+      constexpr int a = f(5); // CT init, not modifiable
+      int b           = f(5); // maybe CT init, modifiable
+      constinit int c = f(5); // CT init, modifiable
+    \end{cppcode}
+  \end{exampleblock}
+\end{frame}

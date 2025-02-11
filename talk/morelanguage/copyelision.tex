@@ -1,0 +1,48 @@
+\subsection[copy]{Copy elision}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Copy elision}
+  \begin{block}{Where does it take place ?}
+    \small
+    \begin{cppcode*}{}
+      struct Foo { ... };
+      Foo f() {
+        return Foo(); // return-value opt. (RVO)
+      }
+      Foo g() {
+        Foo foo;
+        return foo; // named return-value opt. (NRVO)
+      }
+      int main() {
+        // compiler must avoid these copies:
+        Foo a = f();
+        Foo b = Foo();
+        Foo c = Foo(Foo());
+        // copy elision allowed, but not guaranteed:
+        Foo d = g();
+      }
+    \end{cppcode*}
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitlecpp[17]{Guaranteed copy elision}
+  Allows to write code not allowed in \cpp14 (would not compile)
+  \begin{block}{Guaranteed: Return value optimization (RVO)}
+    \begin{cppcode*}{}
+      struct Foo {
+        Foo() { ... }
+        Foo(const Foo &) = delete;
+        Foo(Foo &&) = delete;
+        Foo& operator=(const Foo &) = delete;
+        Foo& operator=(Foo &&) = delete;
+      };
+      Foo f() {
+        return Foo();  // ok, no move
+      }
+      int main() {
+        Foo foo = f(); // ok, no move
+      }
+    \end{cppcode*}
+  \end{block}
+\end{frame}
