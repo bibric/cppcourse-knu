@@ -14,11 +14,17 @@ struct DontCopyMe {
 
 int main() {
    // We create an array of DontCopyMe structs:
-   DontCopyMe collection[10];
-
+   const int pipi = 10;
+   DontCopyMe collection[pipi];
+   for (int i = 0; i<pipi; i++){
+        collection[i].resultA = pipi-i;
+        collection[i].resultB = pipi-i+10;
+   }
+   //for (int i = 0; i<pipi; i++){std::cout <<collection[i].resultA<<' '<<collection[i].resultB<<"\n" ;}
    // Task 1:
    // Write a for loop that initialises each struct's resultA and resultB with ascending integers.
    // Verify the output of the program before and after you do this.
+
 
 
    // Task 2:
@@ -28,7 +34,7 @@ int main() {
    // Hint: Fix the type declaration "auto" in the loop head.
    int resultA = 0;
    int resultB = 0;
-   for (auto item : collection) {
+   for (auto const & item : collection) {
       resultA += item.resultA;
       resultB += item.resultB;
    }
@@ -41,3 +47,4 @@ int main() {
 // Think about which loop needs write access to the DontCopyMe.
 // Make sure that all references that don't need write access are const.
 // Hint: C++ understands "auto const".
+//Где надо перезаписать там копируем (первый), де надо читать то ставим const & (второй)

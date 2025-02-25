@@ -21,13 +21,27 @@
 void printName(FastToCopy argument) {
     std::cout << argument.name << '\n';
 }
-
+void printName(const SlowToCopy & argument) {
+    std::cout << argument.name << '\n';
+    //argument.name ="USA";
+}
+void printNameS(SlowToCopy & argument) {
+    std::cout << argument.name << '\n';
+    argument.name ="USA";
+}
+void printNameSNOTCHANGE(SlowToCopy  argument) {
+    std::cout << argument.name << '\n';
+}
 int main() {
     FastToCopy fast = {"Fast"};
     printName(fast);
 
     SlowToCopy slow = {"Slow"};
-    // print it here
+    printNameSNOTCHANGE(slow);
+    printNameS(slow);
+    printNameS(slow);
+    std::cout << "Print one more" << '\n';
+    printName(slow);
 
     return 0;
-}
+}//Вроде всё что просили сделал и погрался с ампермсантом который поможет менять вне самой функции
