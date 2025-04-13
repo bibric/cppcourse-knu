@@ -4,19 +4,66 @@
 
 class Fraction {
  public:
-  // TODO: constructors and operators
+    Fraction(int r = 1, int i = 1) : chiselnik(r), znaminic(i) {
+        normalize();
+    }
+    Fraction & operator*=(int i) {
+        chiselnik *= i;
+        normalize();
+        return *this;
+    }
+
+    Fraction & operator*=(Fraction const & o) {
+        chiselnik *= o.chiselnik;
+        znaminic *= o.znaminic;
+        normalize();
+        return *this;
+    }
+    // Умножение на int (справа)
+    friend Fraction operator*(Fraction f, int i) { return f *= i; }
+    friend Fraction operator*(int i, Fraction const & f) { return f * i; }
+    friend Fraction operator*(Fraction a, Fraction const & b) { return a *= b; }
+
+    bool operator==(const Fraction& obj) const {
+        if((chiselnik==obj.chiselnik)&&(znaminic==obj.znaminic)){
+            return (bool)1;
+        }
+        else{
+            return (bool)0;
+        }
+    }
+    friend bool operator!=(Fraction const & a, Fraction const & b) { return !(a==b); }
+    bool operator>(const Fraction& obj) const {
+        //std::cout<<(*this!=obj)<<" "<<((((float)chiselnik/znaminic)>((float)obj.chiselnik/obj.znaminic)))<<std::endl;
+        if(((float)chiselnik/znaminic)>((float)obj.chiselnik/obj.znaminic)){
+            return (bool)1;
+        }
+        else{
+            return (bool)0;
+        }
+    }
+
+    friend bool operator<(Fraction const & a, Fraction const & b) { return (!(a>b))&&(a!=b); }
+    friend bool operator<=(Fraction const & a, Fraction const & b) { return (!(a>b))||(a==b); }
+    friend bool operator>=(Fraction const & a, Fraction const & b) { return (a>b)||(a==b); }
+    friend std::ostream& operator<<(std::ostream& os, const Fraction& obj);
 
  private:
-  void normalize() {
-    const int gcd = std::gcd(m_num, m_denom);
-    m_num /= gcd;
-    m_denom /= gcd;
-  }
+    int chiselnik, znaminic;
 
-  unsigned int m_num, m_denom;
+    void normalize() {
+        int gcd = std::gcd(chiselnik, znaminic);
+        chiselnik /= gcd;
+        znaminic /= gcd;
+    }
 };
-
-// TODO: operators
+std::ostream& operator<<(std::ostream& os, const Fraction& obj) {
+    float div = (float)obj.chiselnik/obj.znaminic;
+    os <<  obj.chiselnik << "/"
+              << obj.znaminic << "="<<std::setprecision(3) << div;
+    //delete div;
+return os;
+}
 
 
 void printAndCheck(std::string const & what, Fraction const & result, Fraction const & expected) {
@@ -31,11 +78,12 @@ void printAndCheck(std::string const & what, bool result, bool expected) {
 int main() {
   // create a fraction with values 3 (which is 3/1) and 1/3
   const Fraction three{3};
-  const Fraction athird{1, 3};
+  const Fraction athird{1,3};
 
   // print the fractions
   std::cout << "Three: " << three << '\n';
   std::cout << "One third: " << athird << '\n';
+  //std::cout <<2*athird<<"\n";
 
   // multiply fraction with an int
   // the printAndCheck function requires operator<< and operator==:

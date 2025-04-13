@@ -10,6 +10,10 @@ float RegularPolygon::computePerimeter() const {
 }
 
 Pentagon::Pentagon(float radius) : RegularPolygon(5, radius) {}
+float Pentagon::computePerimeter() const {
+    std::cout << "for virtual Pentagon Polygon::computePerimeter is being called\n";
+    return 2 * 5 * std::sin(static_cast<float>(M_PI) / 5) * m_radius;
+}
 
 Hexagon::Hexagon(float radius) : RegularPolygon(6, radius) {}
 

@@ -3,7 +3,8 @@
 class RegularPolygon {
 public:
     RegularPolygon(int n, float radius);
-    float computePerimeter() const;
+    virtual float computePerimeter() const;
+    virtual ~RegularPolygon() = default;
 protected:
     int m_nbSides;
     float m_radius;
@@ -12,11 +13,12 @@ protected:
 class Pentagon : public RegularPolygon {
 public:
     Pentagon(float radius);
+    float computePerimeter() const override;
 };
 
 class Hexagon : public RegularPolygon {
 public:
     Hexagon(float radius);
     // 6*radius is easier than generic case
-    float computePerimeter() const;
+    float computePerimeter() const override;
 };
