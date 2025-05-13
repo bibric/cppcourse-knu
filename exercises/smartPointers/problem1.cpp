@@ -52,14 +52,15 @@ void changeLargeObject( LargeObject & object ) {
 void doStuff() {
 
     // MAKE YOUR CHANGES IN THIS FUNCTION
-
-    auto obj = new LargeObject ;
+    std::unique_ptr<LargeObject> obj{ new LargeObject{} };
+    //auto obj = std::make_unique<LargeObject>;
     changeLargeObject(*obj) ;
-    delete obj ;
+    //delete obj ;
 
 }
 
 int main() {
+
 
     try {
         doStuff() ;
@@ -70,3 +71,7 @@ int main() {
     std::cout<<"Leaked large objects: "<<LargeObject::count<<std::endl ;
 
 }
+//Выполнил задачу: в аутпуте 0
+//Terminated with exception: Error when changing object data.
+//Leaked large objects: 0
+
