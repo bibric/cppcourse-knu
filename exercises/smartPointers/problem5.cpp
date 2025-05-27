@@ -40,12 +40,10 @@ struct LargeObject {
 
 class Owner {
 
-  // SOME CHANGES NEEDED IN THIS CLASS
-
   public:
 
     Owner() : _largeObject( new LargeObject() ) {}
-    LargeObject * getLargeObject() const { return _largeObject.get() ; }
+    auto getLargeObject() const { return _largeObject ; }
 
   private:
 
@@ -55,25 +53,25 @@ class Owner {
 
 class Observer {
 
-  // SOME CHANGES NEEDED IN THIS CLASS
-
   public:
 
     Observer( const Owner & owner ) : _largeObject(owner.getLargeObject()) {}
 
     void setValue( double v ) {
-        if (_largeObject) { _largeObject->data[0] = v ; }
-        else { _largeObject->data[0] = 0. ; }
+        std::shared_ptr<LargeObject> wptr = _largeObject.lock();
+        if (wptr) { wptr->data[0] = v ; }
+        else { wptr->data[0] = 0. ; }
     }
 
     double getValue() const {
-        if (_largeObject) { return _largeObject->data[0] ; }
+        std::shared_ptr<LargeObject> wptr = _largeObject.lock();
+        if (wptr) { return wptr->data[0] ; }
         else { return -1. ; }
     }
 
   private:
 
-    LargeObject * _largeObject ;
+    std::weak_ptr<LargeObject> _largeObject ;
 
 } ;
 

@@ -28,6 +28,8 @@
  *
  * --------------------------------------------------------------------------------------------
  */
+#include <memory>
+
 
 struct LargeObject {
 
@@ -37,17 +39,14 @@ struct LargeObject {
 
 class Owner {
 
-  // MAKE YOUR CHANGES IN THIS CLASS
-
   public:
 
     Owner() : _largeObject( new LargeObject() ) {}
-    LargeObject * getLargeObject() { return _largeObject ; }
-    ~Owner() { delete _largeObject ; }
+    LargeObject * getLargeObject() const { return _largeObject.get() ; }
 
   private:
 
-    LargeObject * _largeObject ;
+    std::shared_ptr<LargeObject> _largeObject ;
 
 } ;
 
@@ -60,16 +59,6 @@ void doStuff() {
         // ... additional owner setup ...
         owners.push_back(owner) ;
     }
-
-    /* Now we have a problem:
-     * We created Owner instances on the stack, and copied them into the vector.
-     * When the instances on the stack are destroyed, the memory is deallocated.
-     * All copies in the vector now point to the deallocated memory!
-     * We could fix this using copy constructors (but we don't want to copy the data),
-     * using move semantics or using shared_ptr.
-     * Here, we want to go for shared_ptr.
-     */
-
 }
 
 int main() {
